@@ -1201,17 +1201,28 @@
         conv2 = 1.
         pcgs = f%p * conv2
         
-        ! nonthemal number density
+        ! nonthemal number density - from total pressure
         !prefac = 3.*(sp%p2-2.) / (sp%p2-1.)
         !prefac = prefac * (sp%gminval**(1.-sp%p2) - sp%gmax**(1.-sp%p2))
         !prefac = prefac / (sp%gminval**(2.-sp%p2) - sp%gmax**(2.-sp%p2)) 
-        prefacOLD = 3.*(sp%p2-2.) / ((sp%p2-1.)*sp%gminval)
-        prefac=prefacOLD
+        !prefac=prefac/(m*c2)
+
+        !from total pressure - ignore gamma max
+        !prefac = 3.*(sp%p2-2.) / ((sp%p2-1.)*sp%gminval) / (m*c2)
+
+        ! nonthermal number density - from partial pressure, p=2
+        !prefac = 3. / ((sp%p2-1.)) / (m*c2)
+        prefac = 3.* (sp%gminval**(1.-sp%p2) - sp%gmax**(1.-sp%p2)) / ((sp%p2-1.) * (m*c2))
         
-        rhocgs = prefac * pcgs / c2
-        ncgsnth= prefac * pcgs / (m*c2)
-        
-        !write(6,*) 'prefacOLD', prefacOLD, 'prefac', prefac
+        ! cacluate number density and mass density
+        rhocgs = prefac * pcgs * mp
+        ncgsnth= prefac * pcgs 
+
+        !if(maxval(bcgs)>0..and.maxval(ncgsnth)>0.) then
+        ! write(6,*) 'prefac', prefac
+        ! write(6,*) 'polb: ',maxval(bcgs),maxval(ncgsnth)
+        !endif
+
         !write(6,*) 'max n', maxval(ncgsnth)
         !write(6,*) 'max b', maxval(bcgs)
         !write(6,*) 'max p', maxval(f%p)

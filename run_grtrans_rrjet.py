@@ -16,7 +16,7 @@ mu = np.cos(ang*np.pi/180.)
 size  = 300.
 uout = 1./(10*size)
 npix = 100
-ngeo = 5000
+ngeo = 1000
 
 cmperMpc = 3.086e24
 MBH = 6.7e9
@@ -30,11 +30,13 @@ psize_rad = psize_cm / DTOBH
 psize_uas = psize_rad / RADPERUAS
 
 pp= 2.001
-RF = 43.e9
+RF = 230.e9
+BETAECONST=1.e-10
+FPOSITRON = 0
 cfun = 'jet'
 cfun2 = 'seismic'
 RERUN = True
-FNAME = 'grtrans_jet_compare.txt'
+FNAME = 'grtrans_jet_compare_positrons.txt'
 
 def main():
 
@@ -43,16 +45,16 @@ def main():
 
     x.write_grtrans_inputs(name+'.in', oname=name+'.out',
                            fname='RRJET',phi0=0.,
-                           betaeconst=1.e-4, ximax=10., 
+                           betaeconst=BETAECONST, ximax=10., 
                            nfreq=1,fmin=RF,fmax=RF,
                            gmin=10., gmax=1.e35, p2=pp, p1=pp,
                            #ename='SYNCHPL',
                            ename='POLSYNCHPL',
-                           nvals=4, fpositron=0,
+                           nvals=4, fpositron=FPOSITRON,
                            spin=0., standard=1,
                            uout=uout,
                            mbh=MBH,
-                           #epcoefindx=[1,1,1,1,1,1,1],
+                           epcoefindx=[1,1,1,1,1,1,1],
                            #epcoefindx=[1,1,1,1,0,0,0],
                            mdotmin=1.57e15,mdotmax=1.57e15,nmdot=1,
                            nmu=1,mumin=mu,mumax=mu,
@@ -87,11 +89,11 @@ def save_grtrans_image(grt_obj):
     U_im *= factor
     V_im *= factor
 
-    x = np.array([[i for i in range(npix)] for j in range(npix)]).flatten()
-    y = np.array([[j for i in range(npix)] for j in range(npix)]).flatten()
+    x = np.array([[i for i in range(npix)] for j in range(npix)]).flatten().astype(float)
+    y = np.array([[j for i in range(npix)] for j in range(npix)]).flatten().astype(float)
 
-    x -= npix/2
-    y -= npix/2
+    x = x - npix/2
+    y = y - npix/2
     x = x*psize_uas
     y = y*psize_uas
 
@@ -122,8 +124,10 @@ def display_grtrans_image(grt_obj,nvec=20,veccut=0.005,blur_kernel=1.25):
     
     # Polarization Vectors
     P_im = np.abs(Q_im + 1j*U_im)
-    m_im = P_im/I_im
 
+
+    m_im = P_im/I_im
+    voi_im = V_im/I_im
 
     thin = npix//nvec
     mask = I_im > veccut * np.max(I_im)
@@ -143,21 +147,22 @@ def display_grtrans_image(grt_obj,nvec=20,veccut=0.005,blur_kernel=1.25):
 
     P_im[np.logical_not(mask)]=0.
     m_im[np.logical_not(mask)]=0.
+    voi_im[np.logical_not(mask)]=0.
 
     # ticks
     xticks = ticks(npix, 2*size/npix)
     yticks = ticks(npix, 2*size/npix)
 
     # display Stokes I 
-    plt.figure(0)
-    im = plt.imshow(I_im, cmap=plt.get_cmap(cfun), interpolation='gaussian')
-    cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
-    cb.set_label('Tb (K)', fontsize=14)
-    plt.title(("Stokes I, %.2f GHz " % (RF/1e9)), fontsize=16)
-    plt.xticks(xticks[0], xticks[1])
-    plt.yticks(yticks[0], yticks[1])
-    plt.xlabel('x/rg')
-    plt.ylabel('y/rg')
+#    plt.figure(0)
+#    im = plt.imshow(I_im, cmap=plt.get_cmap(cfun), interpolation='gaussian')
+#    cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
+#    cb.set_label('Tb (K)', fontsize=14)
+#    plt.title(("Stokes I, %.2f GHz " % (RF/1e9)), fontsize=16)
+#    plt.xticks(xticks[0], xticks[1])
+#    plt.yticks(yticks[0], yticks[1])
+#    plt.xlabel('x/rg')
+#    plt.ylabel('y/rg')
 
     # display Stokes Q 
     plt.figure(1)
@@ -204,18 +209,30 @@ def display_grtrans_image(grt_obj,nvec=20,veccut=0.005,blur_kernel=1.25):
 #    plt.ylabel('y/rg')
 
 #    # display m
-#    plt.figure(5)
-#    im = plt.imshow(m_im, cmap=plt.get_cmap('viridis'), interpolation='gaussian')
-#    cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
-#    cb.set_label('P/I', fontsize=14)
-#    plt.title(("P/I, %.2f GHz " % (RF/1e9)), fontsize=16)
-#    plt.xticks(xticks[0], xticks[1])
-#    plt.yticks(yticks[0], yticks[1])
-#    plt.xlabel('x/rg')
-#    plt.ylabel('y/rg')
+    plt.figure(5)
+    im = plt.imshow(m_im, cmap=plt.get_cmap('jet'), interpolation='gaussian')
+    cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
+    cb.set_label('P/I', fontsize=14)
+    plt.title(("P/I, %.2f GHz " % (RF/1e9)), fontsize=16)
+    plt.xticks(xticks[0], xticks[1])
+    plt.yticks(yticks[0], yticks[1])
+    plt.xlabel('x/rg')
+    plt.ylabel('y/rg')
+
+#    # display V/I
+    plt.figure(6)
+    im = plt.imshow(voi_im, cmap=plt.get_cmap('jet'), interpolation='gaussian')
+    cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
+    cb.set_label('V/I', fontsize=14)
+    plt.title(("V/I, %.2f GHz " % (RF/1e9)), fontsize=16)
+    plt.xticks(xticks[0], xticks[1])
+    plt.yticks(yticks[0], yticks[1])
+    plt.xlabel('x/rg')
+    plt.ylabel('y/rg')
+
 
     # display I with pol ticks
-    plt.figure(6)
+    plt.figure(7)
     im = plt.imshow(I_im, cmap=plt.get_cmap(cfun), interpolation='gaussian')
     cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
     cb.set_label('Tb (K)', fontsize=14)

@@ -10,36 +10,39 @@ import grtrans_batch as gr
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
 
-ang=60
+ang=45.
 mu = np.cos(ang*np.pi/180.)
 size  = 25.
 uout = 1./(2*size)
-npix = 50
-ngeo = 1000
+npix = 100
+ngeo = 800
 
 cmperKpc = 3.086e21
 MBH = 4.1e6
-DTOBH = 8.1*cmperMpc
+DTOBH = 8.1*cmperKpc
+RADPERUAS = np.pi/180./3600./1.e6
 psize_rg = 2*size/npix
 cmperrg = 147708.8 * MBH
 psize_cm = psize_rg * cmperrg
 psize_rad = psize_cm / DTOBH
+psize_uas = psize_rad / RADPERUAS
 
-RF = 345.e9
-cfun = 'jet'
-cfun2 =  'seismic'
+RF = 230.e9
+cfun = 'afmhot'
+cfun2 =  'Spectral'
 RERUN = True
 
 #Broderick&Loeb 06 parameters
-NSCL=3.e7
-TSCL=1.7e11
-NNTHSCL=8.e4
-BETA=3.3
-PNTH=2.9
-FPOSITRON=0.5  #0 <npositron/nelectron <1
+NSCL=1.e7
+TSCL=1.5e11
+NNTHSCL=1.e5
+BETA=10.
+PNTH=2.8
+FPOSITRON=0  #0 <npositron/nelectron <1
+A = .998
 
-name = ('riaf_%0.1f_'%FPOSITRON)+str(ang)
-FNAME = ('riaf_%0.1f_'%FPOSITRON)+str(ang)
+name = ('riaf_%0.1f_'%FPOSITRON)+str(ang)+'_im'
+FNAME = ('riaf_%0.1f_'%FPOSITRON)+str(ang)+'_im'
 
 def main():
     # run grtrans
@@ -50,13 +53,13 @@ def main():
                            fname='SARIAF', phi0=0.,
                            #betaeconst=1.e-4, ximax=10., 
                            nfreq=1,fmin=RF,fmax=RF,
-                           gmin=100., p2=2.25, p1=2.25,
+                           gmin=100., p2=4.5, p1=4.5,
                            snscl=NSCL, ntscl=TSCL, snnthscl=NNTHSCL, 
-                           snnthp=PNTH, sbeta=BETA, sbl06=0,
+                           snnthp=PNTH, sbeta=BETA, sbl06=1,
                            fpositron=FPOSITRON,
                            ename='HYBRIDTHPL',
                            nvals=4,
-                           spin=0.,standard=1,
+                           spin=A,standard=1,
                            uout=uout,
                            mbh=MBH,
                            #mdotmin=1.57e15,mdotmax=1.57e15,nmdot=1,
@@ -76,8 +79,8 @@ def main():
     tmax = np.max( x.ivals[:,0,0]*3.254e13/(RF**2 * psize_rad**2))
     pmax = np.max( np.sqrt(x.ivals[:,1,0]**2 + x.ivals[:,2,0]**2)*3.254e13/(RF**2 * psize_rad**2))
 
-    tmax=5.e10
-    pmax=2.e10
+    #tmax=5.e10
+    #pmax=2.e10
     save_grtrans_image(x)
     display_grtrans_image(x,tmax=tmax,pmax=pmax)
     #x.disp_grtrans_image()
@@ -205,7 +208,8 @@ def display_grtrans_image(x,nvec=25,veccut=0.005,tmax=1.e10,pmax=1.e10,blur_kern
     im = plt.imshow(V_im, cmap=plt.get_cmap(cfun2), interpolation='gaussian',vmin=-pmax,vmax=pmax)
     cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
     cb.set_label('Tb (K)', fontsize=14)
-    plt.title(("Stokes V, %.2f GHz " % (RF/1e9)), fontsize=16)
+    voi = np.sum(V_im)/np.sum(I_im)
+    plt.title(("Stokes V, %.2f GHz , V/I=%.2f " % (RF/1e9, voi)), fontsize=16)
     plt.xticks(xticks[0], xticks[1])
     plt.yticks(yticks[0], yticks[1])
     plt.xlabel('x/rg')
@@ -216,7 +220,8 @@ def display_grtrans_image(x,nvec=25,veccut=0.005,tmax=1.e10,pmax=1.e10,blur_kern
     im = plt.imshow(P_im, cmap=plt.get_cmap(cfun), interpolation='gaussian',vmin=0,vmax=pmax)
     cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
     cb.set_label('Tb (K)', fontsize=14)
-    plt.title(("P, %.2f GHz " % (RF/1e9)), fontsize=16)
+    poi = np.sum(P_im)/np.sum(I_im)
+    plt.title(("P, %.2f GHz , P/I=%.2f" % (RF/1e9,poi)), fontsize=16)
     plt.xticks(xticks[0], xticks[1])
     plt.yticks(yticks[0], yticks[1])
     plt.xlabel('x/rg')
@@ -227,7 +232,7 @@ def display_grtrans_image(x,nvec=25,veccut=0.005,tmax=1.e10,pmax=1.e10,blur_kern
     im = plt.imshow(m_im, cmap=plt.get_cmap('viridis'), interpolation='gaussian')
     cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
     cb.set_label('P/I', fontsize=14)
-    plt.title(("P/I, %.2f GHz " % (RF/1e9)), fontsize=16)
+    plt.title(("P/I, %.2f GHz , P/I=%.2f" % (RF/1e9,poi)), fontsize=16)
     plt.xticks(xticks[0], xticks[1])
     plt.yticks(yticks[0], yticks[1])
     plt.xlabel('x/rg')

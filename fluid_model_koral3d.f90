@@ -472,7 +472,6 @@
              b(1+i*nelem:(i+1)*nelem)%data(3)=(data(bpos+2,:))
              b(1+i*nelem:(i+1)*nelem)%data(4)=(data(bpos+3,:))
 
-
              u(1+i*nelem:(i+1)*nelem)%data(1)=(data(vpos,:))           
              u(1+i*nelem:(i+1)*nelem)%data(2)=(data(vpos+1,:))
              u(1+i*nelem:(i+1)*nelem)%data(3)=(data(vpos+2,:))

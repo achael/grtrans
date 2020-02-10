@@ -547,9 +547,9 @@
 !     n=n ; nnth=nnth
 !     b=vars%bcgs ; t=vars%tcgs ; p=vars%p
       !     gmin=vars%gmin ; gmax=vars%gmax ; th=vars%incang
-      !if(maxval(b)>0..and.maxval(nnth)>0.) then
-      !   write(6,*) 'polb: ',maxval(b),maxval(nnth),maxval(p)
-      !endif
+!      if(maxval(b)>0..and.maxval(nnth)>0.) then
+!         write(6,*) 'polb: ',maxval(b),maxval(nnth),maxval(p)
+!      endif
       
 !     write(6,*) 'polb: ',b
 !     write(6,*) 'poln: ',nnth
@@ -569,18 +569,17 @@
       !and extending limits of integration from 0 - infty
 
       ! CORRECT
-      !A=(p-1d0)*nnth/(gmin**(1d0-p)-gmax**(1d0-p))
+      A=(p-1d0)*nnth/(gmin**(1d0-p)-gmax**(1d0-p))
       !call get_polsynchpl_facs(xmin,xmax,p,gxfac,gpfac,gvfac,gafac,gapfac,gavfac)
 
       ! APPROX
-      A=(p-1d0)*nnth/(gmin**(1d0-p))
       gxfac = (2d0**((p-3d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0-1d0/12d0)*(p + 7d0/3d0)/(p + 1d0)
       gpfac = (2d0**((p-3d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0-1d0/12d0)
-      gvfac = (2d0**(p/2d0-1d0))*GAMMA(p/4d0+1d0/3d0)*GAMMA(p/4d0+2d0/3d0)*(p + 2d0)/p
+      gvfac = (2d0**((p-2d0)/2d0))*GAMMA(p/4d0+1d0/3d0)*GAMMA(p/4d0+2d0/3d0)*(p + 2d0)/p
 
-      gafac = (2d0**(p/2d0 - 1d0))*GAMMA(p/4d0+5d0/6d0)*GAMMA(p/4d0+1d0/6d0)*(p + 10d0/3d0)/(p + 1d0)
-      gapfac = (2d0**(p/2d0 - 1d0))*GAMMA(p/4d0+5d0/6d0)*GAMMA(p/4d0+1d0/6d0)*(p + 2d0)/(p + 1d0)
-      gavfac = (2d0**((p - 1d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0+11d0/12d0)*(p + 3d0)/(p + 1d0)
+      gafac  = (2d0**((p-2d0)/2d0))*GAMMA(p/4d0+5d0/6d0)*GAMMA(p/4d0+1d0/6d0)*(p + 10d0/3d0)/(p + 2d0)
+      gapfac = (2d0**((p-2d0)/2d0))*GAMMA(p/4d0+5d0/6d0)*GAMMA(p/4d0+1d0/6d0)
+      gavfac = (2d0**((p-1d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0+11d0/12d0)*(p + 3d0)/(p + 1d0)
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 
       ! emission 
@@ -599,7 +598,8 @@
       kstaralphaq=1d0
       kstaralphav=2d0*(alpha+3d0/2d0)/(alpha+1)
       kstarq=-kstaralphaq*kperp*(nubperp/nu)**3d0*gmin**(-2d0*alpha+1d0)* &
-      (1d0-(nui/nu)**(alpha-1d0/2d0))*(alpha-1d0/2d0)**(-1d0)!*gapfac
+           (1d0-(nui/nu)**(alpha-1d0/2d0))*(alpha-1d0/2d0)**(-1d0)!*gapfac
+      
       kstarv=kstaralphav*kperp*(nubperp/nu)**2d0*log(gmin)* &
            gmin**(-2*(alpha+1))/tanth!*gavfac
 

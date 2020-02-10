@@ -124,7 +124,8 @@ module fluid_model_rrjet
 !        write(6,*) 'bmag: ',bmag
 
         ! Find the nonthermal electron pressure (betae * magnetic pressure)
-        p = 0.5 * betaeconst * (bmag*bmag) !/ (8*pi)
+        !p = 0.5 * betaeconst * (bmag*bmag) !/ (8*pi)
+        p = betaeconst * (bmag*bmag) !/ (8*pi)
         rho = p ! Convert pressure to number density in  convert_fluidvars_rrjet using emis params
 
         ! Zero everything where xi>ximax and z<2
