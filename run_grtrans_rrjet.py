@@ -31,7 +31,7 @@ psize_uas = psize_rad / RADPERUAS
 
 pp= 2.001
 RF = 230.e9
-BETAECONST=1.e-10
+BETAECONST= -1 #1.e-10
 FPOSITRON = 0
 cfun = 'jet'
 cfun2 = 'seismic'
