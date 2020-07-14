@@ -136,7 +136,7 @@ module fluid_model_rrjet
         rho = p ! Convert pressure to number density in  convert_fluidvars_rrjet using emis params
 
         ! Zero everything where xi>ximax and z<2
-        where((xi.gt.ximax).or.(abs(z).le.2d0))
+        where((xi.gt.ximax).or.(abs(z).le.2d0).or.(abs(z).ge.1000d0))
            !u%data(1) = dzero;
            !u%data(2) = dzero;
            !u%data(3) = dzero;
