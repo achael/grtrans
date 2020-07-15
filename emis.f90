@@ -14,7 +14,7 @@
                   ESYNCHTHAV=13, ESYNCHTHAVNOABS=14, EPOLSYNCHSYMTH=15, &
                   EHYBRIDTHPL = 20, &
                   EHYBRIDTH=21, EHYBRIDPL=22, EMAXJUTT=23, EMAXCOMP=24, &
-                  EBINS=25, EHYBRIDTHBINS=26, ESYNCHTHBREMS=27
+                  EBINS=25, EHYBRIDTHBINS=26, ESYNCHTHBREMS=27, EHYBRIDTHPLAV=28
 
        type emis
          real(kind=8), dimension(:,:), allocatable :: j,K,nnthcgs
@@ -291,6 +291,8 @@
          subroutine select_emissivity_values(e,ename)
          type (emis), intent(out) :: e
          character(len=100), intent(in) :: ename
+         !write(6,*) 'ename:', ename
+
          if(ename=='POLSYNCHTH') then
             e%type=EPOLSYNCHTH
             e%neq=4
@@ -309,6 +311,9 @@
          elseif(ename=='HYBRIDTHPL') then
             e%type=EHYBRIDTHPL 
             e%neq=4
+         elseif(ename=='HYBRIDTHPLAV') then
+            e%type=EHYBRIDTHPLAV
+            e%neq=1            
          elseif(ename=='BREMS') then
             e%type=EBREMS
             e%neq=1
@@ -378,6 +383,11 @@
          SELECT CASE (e%type)
             
            CASE (EHYBRIDTHPL)
+             allocate(e%ncgs(npts)); allocate(e%tcgs(npts))
+             allocate(e%bcgs(npts))
+             allocate(e%ncgsnth(npts)); allocate(e%p(npts))
+             call initialize_polsynchpl(e%neq) !I guess this is right?
+           CASE (EHYBRIDTHPLAV)
              allocate(e%ncgs(npts)); allocate(e%tcgs(npts))
              allocate(e%bcgs(npts))
              allocate(e%ncgsnth(npts)); allocate(e%p(npts))
@@ -470,6 +480,12 @@
               call polsynchpl(nu,e%ncgsnth,e%bcgs,e%incang,e%p,e%gmin, &
                e%gmax,e%fpositron,Kpl)
               K = Kth + Kpl
+           case(ehybridthplav)
+
+              !TODO: positron?
+              call synchemis(nu,e%ncgs,e%bcgs,e%tcgs,Kth)
+              call synchpl(nu,e%ncgsnth,e%bcgs,e%incang,e%p,e%gmin, e%gmax,Kpl)
+              K = Kth + Kpl              
            case(ehybridth)
               call polsynchth(nu,e%ncgs,e%bcgs,e%tcgs,e%incang,e%fpositron,Kth)
               call polsynchpl(nu,e%ncgsnth,e%bcgs,e%incang,e%p,e%gmin, &
@@ -560,6 +576,8 @@
          SELECT CASE (e%type)
            CASE (EHYBRIDTHPL)
              e%ncgs=ncgs; e%bcgs=bcgs; e%tcgs=tcgs; e%ncgsnth=ncgsnth 
+           CASE (EHYBRIDTHPLAV)
+             e%ncgs=ncgs; e%bcgs=bcgs; e%tcgs=tcgs; e%ncgsnth=ncgsnth 
            CASE (EHYBRIDTH)
              e%ncgs=ncgs; e%bcgs=bcgs; e%tcgs=tcgs; e%ncgsnth=ncgsnth 
            CASE (EHYBRIDPL)
@@ -640,6 +658,11 @@
              call polsynchpl(nu,e%ncgsnth,e%bcgs,e%incang,e%p,e%gmin, &
               e%gmax,e%fpositron,Kpl)
              K = Kth + Kpl
+           case(ehybridthplav)
+              !TODO: positron?
+              call synchemis(nu,e%ncgs,e%bcgs,e%tcgs,Kth)
+              call synchpl(nu,e%ncgsnth,e%bcgs,e%incang,e%p,e%gmin, e%gmax,Kpl)
+              K = Kth + Kpl                           
            case(ehybridth)
              call polsynchth(nu,e%ncgs,e%bcgs,e%tcgs,e%incang,e%fpositron,Kth)
              call polsynchpl(nu,e%ncgsnth,e%bcgs,e%incang,e%p,e%gmin, &
@@ -695,7 +718,12 @@
              deallocate(e%bcgs); deallocate(e%incang)
              deallocate(e%ncgsnth); deallocate(e%p)
              call del_polsynchpl(e%neq)              
-           CASE (EHYBRIDTH)
+           CASE (EHYBRIDTHPLAV)
+             deallocate(e%ncgs); deallocate(e%tcgs)
+             deallocate(e%bcgs); deallocate(e%incang)
+             deallocate(e%ncgsnth); deallocate(e%p)
+             call del_polsynchpl(e%neq)              
+          CASE (EHYBRIDTH)
              deallocate(e%ncgs); deallocate(e%tcgs)
              deallocate(e%bcgs); deallocate(e%incang)
              deallocate(e%ncgsnth); deallocate(e%p)
@@ -832,6 +860,9 @@
              call emis_model_bins(e, e%bingammamin, e%bingammamax, e%nrelbin)
            CASE (EHYBRIDTHPL)
              call emis_model_synchth(e,ep%mu,ep%fpositron)
+             call emis_model_synchpl(e,ep%gmin,ep%gmax,ep%p1,ep%fpositron)
+           CASE (EHYBRIDTHPLAV)
+             !PIN call emis_model_synchth(e,ep%mu,ep%fpositron)
              call emis_model_synchpl(e,ep%gmin,ep%gmax,ep%p1,ep%fpositron)
            CASE (EHYBRIDTH) !alwinnote
              call emis_model_synchth(e,ep%mu,ep%fpositron)
