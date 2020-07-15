@@ -14,7 +14,7 @@ import scipy.ndimage.interpolation as interpolation
 from scipy.interpolate import interp1d
 
 # Run parameters
-RUN_IMAGE = True    # run image
+RUN_IMAGE = False    # run image
 RUN_SPECTRUM = True # run spectrum 
 RERUN = True      # rerun 
 SAVEOUT = True    # save output images
@@ -80,7 +80,7 @@ LumFac = (4 * np.pi * cmperrg**2)
 LumtoJy = 1.e23/(4*np.pi*bhdist**2)
 
 # Plotting parameters
-SGRADIR =   '../rrjet_and_riaf/SgrA_data' # directory with Sgr A* data files
+SGRADIR =   './SgrA_data' # directory with Sgr A* data files
 sgra_radio_data =  np.loadtxt(SGRADIR + '/sgr_A_data_radio.txt') # Sgr A* radio data
 sgra_ir_data = np.loadtxt(SGRADIR + '/sgr_A_data_ir.txt') # Sgr A* infrared data
 cfun = 'afmhot'
@@ -160,6 +160,8 @@ def run_grtrans_image():
 def run_grtrans_spectrum():
     """Run grtrans spectrum"""
 
+    sizey =  size_spec / NPIX_SPEC
+
     x=gr.grtrans()
     x.write_grtrans_inputs(oname+'_spec.in', oname=oname+'_spec.out',
                            fname='SARIAF', phi0=0.,
@@ -174,8 +176,10 @@ def run_grtrans_spectrum():
                            uout=uout_spec,
                            mbh=MBH,
                            nmu=1,mumin=mu,mumax=mu,
-                           gridvals=[-size_spec,size_spec,-size_spec,size_spec],
-                           nn=[NPIX_SPEC,NPIX_SPEC,NGEO],
+                           gridvals=[-size_spec,size_spec,-sizey,sizey],
+                           nn=[NPIX_SPEC,1,NGEO],
+                           #gridvals=[-size_spec,size_spec,-size_spec,size_spec],
+                           #nn=[NPIX_SPEC,NPIX_SPEC,NGEO],
                            hindf=1,hnt=1,
                            muval=1.)
 

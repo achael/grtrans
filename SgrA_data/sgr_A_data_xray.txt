@@ -1,0 +1,16 @@
+#(keV) (lum) (flare?)
+#all for range 2-10 keV, plotted at 4 keV
+
+#Neilsen 2013
+#flares
+
+#min
+4 1.0e34 1
+#max
+4 2.0e35 1
+
+#Baganoff 03
+#quiescent
+#approx 10% believed to come from inner region
+4 2.4e33 0
+4 2.4e32 0
