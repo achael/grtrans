@@ -160,7 +160,7 @@ def run_grtrans_image():
 def run_grtrans_spectrum():
     """Run grtrans spectrum"""
 
-    sizey =  size_spec / NPIX_SPEC
+    #sizey =  size_spec / NPIX_SPEC
 
     x=gr.grtrans()
     x.write_grtrans_inputs(oname+'_spec.in', oname=oname+'_spec.out',
@@ -176,10 +176,10 @@ def run_grtrans_spectrum():
                            uout=uout_spec,
                            mbh=MBH,
                            nmu=1,mumin=mu,mumax=mu,
-                           gridvals=[-size_spec,size_spec,-sizey,sizey],
-                           nn=[NPIX_SPEC,1,NGEO],
-                           #gridvals=[-size_spec,size_spec,-size_spec,size_spec],
-                           #nn=[NPIX_SPEC,NPIX_SPEC,NGEO],
+                           #gridvals=[-size_spec,size_spec,-sizey,sizey],
+                           #nn=[NPIX_SPEC,1,NGEO],
+                           gridvals=[-size_spec,size_spec,-size_spec,size_spec],
+                           nn=[NPIX_SPEC,NPIX_SPEC,NGEO],
                            hindf=1,hnt=1,
                            muval=1.)
 
