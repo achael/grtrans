@@ -43,17 +43,13 @@ RFGHZ = 230.        # Frequency in Ghz
 FOV = 30.           # FOV / Rg
 NPIX = 128          # number of pixels
 NGEO = 500          # number of geodesic points
-size  = 0.5*FOV         
-uout = 1./(2.*size)
 
 # Raytrace parameters - spectrum
 NFREQ = 20          # number of frequencies
-FOV_SPEC = 250      # FOV / Rg
+FOV_SPEC = 100      # FOV / Rg
 NPIX_SPEC = 64      # number of pixels in spectrum image
 FMIN = 1.e9         # minimum freq in spectrum
 FMAX = 1.e14        # maximum freq in spectrum 
-size_spec  = 0.5*FOV_SPEC      
-uout_spec = 1./(2.*size_spec)
 
 # Output File names
 OUTDIR = '../rrjet_and_riaf'                            # output directory
@@ -70,9 +66,9 @@ mu = np.cos(ANG*np.pi/180.)
 cmperKpc = 3.086e21
 degree = np.pi/180.
 radperuas = degree/3600./1.e6
-psize_rg = 2*size / NPIX
 cmperrg = 147708.885 * MBH
 bhdist = DTOBH * cmperKpc
+psize_rg = FOV / float(NPIX)
 psize_cm = psize_rg * cmperrg
 psize_rad = psize_cm / bhdist
 psize_uas = psize_rad / radperuas
@@ -94,6 +90,11 @@ plt.rc('font', family='serif')
 
 def run_grtrans_image():
     """ run grtrans single image"""
+
+
+    size  = 0.5*FOV         
+    uout = 1./(2.*size)
+
     x=gr.grtrans()
 
     x.write_grtrans_inputs(oname+'_im.in', oname=oname+'_im.out',
@@ -122,7 +123,8 @@ def run_grtrans_image():
     x.read_grtrans_output()
 
     # pixel sizes
-    da = x.ab[x.nx,0]-x.ab[0,0]
+    #da = x.ab[x.nx,0]-x.ab[0,0]
+    da = x.ab[x.ny,0]-x.ab[0,0] ##TODO -- is this right ordering? 
     db = x.ab[1,1]-x.ab[0,1]
     if (da!=db): raise Exception("pixel da!=db")
     psize = da*(cmperrg/bhdist)
@@ -160,12 +162,25 @@ def run_grtrans_image():
 def run_grtrans_spectrum():
     """Run grtrans spectrum"""
 
-    #sizey =  size_spec / NPIX_SPEC
+    # TODO fix
+    #NPIX_SPEC = 501
+    #size_spec = 500
+
+    FOV_SPEC=2000
+    size_spec  = 0.5*FOV_SPEC      
+    uout_spec = 1./(2*size_spec)
+
+    npix_x = NPIX_SPEC
+    npix_y = NPIX_SPEC
+
+    size_x = size_spec
+    size_y = size_spec
 
     x=gr.grtrans()
     x.write_grtrans_inputs(oname+'_spec.in', oname=oname+'_spec.out',
                            fname='SARIAF', phi0=0.,
-                           nfreq=NFREQ,fmin=1.e8,fmax=1.e16,
+                           #nfreq=2,fmin=200.e9,fmax=230.e9,
+                           nfreq=NFREQ,fmin=FMIN,fmax=FMAX,
                            gmin=GAMMAMIN, p2=PNTH, p1=PNTH,
                            snscl=NSCL, ntscl=TSCL, snnthscl=NNTHSCL, 
                            snnthp=NTH_RADIAL_PLAW, sbeta=BETA, sbl06=BLO6,
@@ -176,10 +191,10 @@ def run_grtrans_spectrum():
                            uout=uout_spec,
                            mbh=MBH,
                            nmu=1,mumin=mu,mumax=mu,
-                           #gridvals=[-size_spec,size_spec,-sizey,sizey],
-                           #nn=[NPIX_SPEC,1,NGEO],
-                           gridvals=[-size_spec,size_spec,-size_spec,size_spec],
-                           nn=[NPIX_SPEC,NPIX_SPEC,NGEO],
+                           gridvals=[-size_x,size_x,-size_y,size_y],
+                           nn=[npix_x,npix_y,NGEO],
+                           #gridvals=[-size_spec,size_spec,-size_spec,size_spec],
+                           #nn=[NPIX_SPEC,NPIX_SPEC,NGEO],
                            hindf=1,hnt=1,
                            muval=1.)
 
@@ -192,6 +207,9 @@ def run_grtrans_spectrum():
     x.calc_freqs(NFREQ)
     x.convert_to_lum()
     spec = x.spec[0][0:NFREQ]
+    if npix_x==1 or npix_y==1:
+        spec *= 0.5  # divide by 2 because we have +/- r in the strip
+ 
     freqs = x.freqs
 
     # plot Stokes I spectrum
@@ -213,7 +231,7 @@ def run_grtrans_spectrum():
     #linestyles=['solid','dashdot','dashed']
     ls = 'solid'
 
-    spec_interp = interp1d(np.log10(freqs), np.log10(spec), kind=3)
+    spec_interp = interp1d(np.log10(freqs), np.log10(spec))
     logfreqs_plot = np.linspace(np.log10(FMIN), np.log10(FMAX), 500)
     logspec_plot = spec_interp(logfreqs_plot)
 

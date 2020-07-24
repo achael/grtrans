@@ -491,7 +491,7 @@ class grtrans:
         self.nx=nx
         self.ny=ny
         self.nvals=nvals
-        self.calc_spec(n-1)
+        self.calc_spec()
 #        self.calc_freqs(self.inputs.nfreq)
 
 #!AC is this always right - no n?
@@ -504,11 +504,12 @@ class grtrans:
         else:
             self.freqs=np.array([fmin])
  
-    def calc_spec(self,n):
+    def calc_spec(self):
 #        print('test',np.shape(self.ab),np.shape(self.ivals))
 #        if self.inputs.nrotype==1:
-        if self.ny != 1:
-            da=self.ab[self.nx,0]-self.ab[0,0]
+        if self.ny != 1 and self.nx != 1:
+            #da=self.ab[self.nx,0]-self.ab[0,0]
+            da=self.ab[self.ny,0]-self.ab[0,0]  # TODO -- right?  # ! ANDREW
             db=self.ab[1,1]-self.ab[0,1]
             spec=np.sum(self.ivals,0)*da*db
             if self.nvals>=4:
@@ -516,23 +517,33 @@ class grtrans:
                 self.cp=spec[3,:]/spec[0,:]
                 self.lpf=np.sum(np.sqrt(self.ivals[:,1,:]**2.+self.ivals[:,2,:]**2.),0)*da*db/spec[0,:]
                 self.cpf=np.sum(np.abs(self.ivals[:,3,:]),0)*da*db/spec[0,:]
-        else:
+        elif self.ny==1:
+            print('ny=1!')
+            n = self.ivals.shape[-1]
             da=self.ab[1,0]-self.ab[0,0]
             db=0.
-            spec=np.empty([n,int(self.inputs.nvals)])
+            spec=np.empty([int(self.inputs.nvals),n])
             for i in range(n):
                 for j in range(int(self.inputs.nvals)):
-                    spec[i,j]=np.sum(self.ivals[:,j,i]*self.ab[:,0],0)*da*2.*3.14
+                    spec[j,i]=np.sum(self.ivals[:,j,i]*np.abs(self.ab[:,0]),0)*da*2.*np.pi
+        else:
+            print('nx=1!')
+            n = self.ivals.shape[-1]
+            da=0.
+            db=self.ab[1,1]-self.ab[0,1]
+            spec=np.empty([int(self.inputs.nvals),n])
+            for i in range(n):
+                for j in range(int(self.inputs.nvals)):
+                    spec[j,i]=np.sum(self.ivals[:,j,i]*np.abs(self.ab[:,1]),0)*db*2.*np.pi
     
         self.spec=spec
         self.da=da; self.db=db
-#        self.convert_to_lum()
 
 
-    def calc_spec_pgrtrans(self,n):
+    def calc_spec_pgrtrans(self):
 #       version for pgrtrans where array ordering is different
-        if self.ny != 1:
-            da=self.ab[0,self.nx]-self.ab[0,0]
+        if self.ny != 1 and self.nx != 1:
+            da=self.ab[0,self.ny]-self.ab[0,0]  # TODO -- right?  # ! ANDREW
             db=self.ab[1,1]-self.ab[1,0]
             spec=np.sum(self.ivals,1)*da*db
             if self.nvals>=4:
@@ -540,21 +551,38 @@ class grtrans:
                 self.cp=spec[3,:]/spec[0,:]
                 self.lpf=np.sum(np.sqrt(self.ivals[1]**2.+self.ivals[2]**2.),0)*da*db/spec[0,:]
                 self.cpf=np.sum(np.abs(self.ivals[3]),0)*da*db/spec[0,:]
-        else:
+        elif self.ny==1:
+            n = self.ivals.shape[-1]
             da=self.ab[0,1]-self.ab[0,0]
             db=0.
-            spec=np.empty([n,int(self.inputs.nvals)])
+            spec=np.empty([int(self.inputs.nvals),n])
             for i in range(n):
                 for j in range(int(self.inputs.nvals)):
-                    spec[i,j]=np.sum(self.ivals[j,:,i]*self.ab[0,:],0)*da*2.*np.arccos(-1.)
+                    spec[j,i]=np.sum(self.ivals[j,:,i]*np.abs(self.ab[0,:]),0)*da*2.*np.pi
+        else:
+            print('nx=1!')
+            n = self.ivals.shape[-1]
+            da=0.
+            db=self.ab[1,1]-self.ab[1,0]
+            spec=np.empty([int(self.inputs.nvals),n])
+            for i in range(n):
+                for j in range(int(self.inputs.nvals)):
+                    spec[j,i]=np.sum(self.ivals[:,j,i]*np.abs(self.ab[:,1]),0)*db*2.*np.pi
+
         self.spec = spec
-#        self.convert_to_lum()
-    
+        self.da=da; self.db=db
+
     def convert_to_lum(self):
         lbh = pcG*msun*self.inputs.mbh / pcc2 #!AC added msun
         fac= (4*np.pi*lbh**2)
-        da = self.ab[self.nx,0]-self.ab[0,0]
-        db = self.ab[1,1]-self.ab[0,1]
+        #da=self.ab[self.nx,0]-self.ab[0,0]
+        if self.ny!=1 and self.nx!=1:
+            da = self.ab[self.ny,0]-self.ab[0,0]  # TODO -- right?  # ! ANDREW
+            db = self.ab[1,1]-self.ab[0,1]
+        elif self.ny==1: 
+            db=da=self.ab[1,0]-self.ab[0,0]
+        elif self.nx==1:
+            da=db=self.ab[1,1]-self.ab[0,1]
         print(da*db)
         self.spec *= fac
         self.ivals *= fac*da*db
@@ -564,15 +592,22 @@ class grtrans:
         lbh = pcG*msun*self.inputs.mbh/pcc2 #!AC added msun
         #lbh = lbh/cmperkpc
         fac = (lbh**2/D**2.)*1e23
-        da = self.ab[self.nx,0]-self.ab[0,0]
-        db = self.ab[1,1]-self.ab[0,1]
+        #da=self.ab[self.nx,0]-self.ab[0,0]
+        if self.ny!=1 and self.nx!=1:
+            da = self.ab[self.ny,0]-self.ab[0,0]  # TODO -- right?  # ! ANDREW
+            db = self.ab[1,1]-self.ab[0,1]
+        elif self.ny==1: 
+            db=da=self.ab[1,0]-self.ab[0,0]
+        elif self.nx==1:
+            da=db=self.ab[1,1]-self.ab[0,1]
+        print(da*db)
         self.ivals *= fac*da*db
         self.spec *= fac
 
 # test code 6/15/2019
 # calculate image first and second moments and use to get xy centroids and semi-major/minor axes
     def calc_centroid_size(self,pgrtrans=-1):
-        self.calc_spec(self.nx)
+        #self.calc_spec(self.nx)
         nimages=len(self.spec[0])
         M00=np.sum(self.ivals[:,0],0)
         M10=np.zeros(nimages); M01=np.zeros(nimages); M11=np.zeros(nimages)
@@ -586,7 +621,7 @@ class grtrans:
             M11[k]=np.sum(w*self.ab[:,0]*self.ab[:,1])
         xcen=M10/M00; ycen=M01/M00; mu20=M20/M00-xcen**2.; mu11=M11/M00-xcen*ycen
         mu02=M02/M00-ycen**2.
-# now do semi-major/minor axis and orientation in terms of moments
+        # now do semi-major/minor axis and orientation in terms of moments
         theta=1./2.*np.arctan(2.*mu11/(mu20-mu02))
         fac=np.sqrt(4.*mu11**2.+(mu20-mu02)**2.)
         amax=np.sqrt(8.*(mu20+mu02+fac))
