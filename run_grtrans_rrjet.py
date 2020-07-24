@@ -22,7 +22,7 @@ SAVEOUT = True    # save output images
 DISPLAYOUT = True # display output image(s)
 
 # RRJET parameters
-PEGASRATIO = -1 #0.1      # ratio of electron to gas pressure (-1 to not use this model)
+PEGASRATIO = -1 #0.1    # ratio of electron to gas pressure (-1 to not use this model)
                         # THIS WILL OVERWRITE THE OTHER MODELS IF NOT EQUAL TO -1 
 
 BETAECONST = 1.e-4      # constant bete0
@@ -42,7 +42,7 @@ ANG = 20.      # polar angle (degrees)
 ROTANG = -73   # rotation angle in sky plane (degrees)
 
 # Raytrace parameters - image
-RFGHZ = 230.        # Frequency in Ghz
+RFGHZ = 43.        # Frequency in Ghz
 FOV = 200.          # FOV / Rg
 NPIX = 128          # number of pixels
 NGEO = 1000         # number of geodesic points
