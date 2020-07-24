@@ -64,14 +64,14 @@
          real(8) :: rspot,r0spot,n0spot,tscl,rscl,wmin,wmax,fmin, &
               fmax,rmax,sigt,fcol,mdot,mbh,nscl,nnthscl,nnthp,beta, &
               np,tp,rin,rout,thin,thout,phiin,phiout,scalefac,sigcut, &
-              betaeconst,ximax
+              betaeconst,betaecrit,ximax,bscl,pscl,pegasratio
       end type
 
 ! added sigcut here instead of in fluid
       type source_params
 !        real(kind=8), dimension(:), allocatable :: mdot,lleddeta,mu
         real(kind=8) :: nfac,bfac,mbh,mdot,p1,p2,gmax,fpositron,gminval, &
-             jetalphaval,muval,sigcut,ximax,betaeconst
+             jetalphaval,muval,sigcut,ximax,betaeconst,betaecrit,bscl,pscl,pegasratio
         real(kind=8), dimension(:), allocatable :: gmin,jetalpha,mu
         integer :: type
       end type
@@ -136,14 +136,16 @@
         subroutine assign_fluid_args(fargs,dfile,hfile,gfile,sim,nt,indf,nfiles,jonfix, &
              nw,nfreq_tab,nr,offset,dindf,magcrit,rspot,r0spot,n0spot,tscl,rscl, &
              wmin,wmax,fmin,fmax,rmax,sigt,fcol,mdot,mbh,nscl,nnthscl,nnthp,beta,bl06,np,tp, &
-             rin,rout,thin,thout,phiin,phiout,scalefac,sigcut,betaeconst,ximax)
+             rin,rout,thin,thout,phiin,phiout,scalefac,sigcut,betaeconst,betaecrit,ximax,&
+             bscl,pscl,pegasratio)
           type (fluid_args), intent(inout) :: fargs
           character(len=100), intent(in) :: dfile,hfile,gfile,sim
           integer, intent(in) :: nt,indf,nfiles,jonfix,nw,nfreq_tab,nr,offset,dindf, &
                magcrit,bl06
           real(8), intent(in) :: rspot,r0spot,n0spot,tscl,rscl,wmin,wmax,fmin, &
                fmax,rmax,sigt,fcol,mdot,mbh,nscl,nnthscl,nnthp,beta,np,tp, &
-               rin,rout,thin,thout,phiin,phiout,scalefac,sigcut,betaeconst,ximax
+               rin,rout,thin,thout,phiin,phiout,scalefac,sigcut,betaeconst,betaecrit,ximax,&
+               bscl,pscl,pegasratio
           write(6,*) 'in fluid args'
           fargs%dfile = dfile; fargs%hfile = hfile; fargs%gfile=gfile
           fargs%sim = sim; fargs%nt = nt; fargs%indf = indf; fargs%nfiles = nfiles
@@ -161,6 +163,8 @@
 !          write(6,*) 'after assign fluid args: ',sigcut
           fargs%scalefac=scalefac; fargs%sigcut=sigcut;
           fargs%betaeconst=betaeconst; fargs%ximax=ximax
+          fargs%betaecrit=betaecrit; fargs%bscl=bscl; fargs%pscl=pscl 
+          fargs%pegasratio=pegasratio
         end subroutine assign_fluid_args
 
         subroutine load_fluid_model(fname,a,fargs)
@@ -244,7 +248,7 @@
                 ,real(fargs%n0spot))
         elseif(fname=='RRJET') then
           !write(6,*) 'load', ifile
-          call init_rrjet(fargs%betaeconst, fargs%ximax)
+          call init_rrjet(fargs%betaeconst,fargs%betaecrit, fargs%ximax,fargs%bscl,fargs%pscl,fargs%pegasratio)
            
         endif
         end subroutine load_fluid_model
@@ -1174,45 +1178,26 @@
         type (fluid), intent(in) :: f
         real(kind=8), dimension(size(f%rho)), &
              intent(out) :: ncgs,ncgsnth,bcgs,tcgs
-        real ::  prefac, prefacOLD, jetflux, conv1, conv2, lcgs
+        real ::  prefac, prefacOLD, conv1, conv2
         type (source_params), intent(in) :: sp
         real(kind=8), dimension(size(f%rho)) :: pcgs, rhocgs
         
-        ! The physical jet flux in G / cm^2
-        ! !AC - TODO -- make an argument
-        jetflux=1.e34
 
-        ! gravitational radius in cm
-        lcgs=GC*sp%mbh*msun/c**2;
-        
-        ! scale magnetic field to Gauss
-        !conv1 = jetflux / (lcgs*lcgs)
-        conv1 = 1.
-        
-        !f%b%data(1) = f%b%data(1) * conv1
-        !f%b%data(2) = f%b%data(2) * conv1
-        !f%b%data(3) = f%b%data(3) * conv1
-        !f%b%data(4) = f%b%data(4) * conv1
-        !f%bmag = f%bmag * conv1
-        bcgs=f%bmag * conv1
-
-        ! scale fluid pressure \propto B^2
-        !conv2 = conv1*conv1
-        conv2 = 1.
-        pcgs = f%p * conv2
+        ! pressure and magnetic field already in cgs
+        bcgs = f%bmag
+        pcgs = f%p
         
         ! nonthemal number density - from total pressure
-        !prefac = 3.*(sp%p2-2.) / (sp%p2-1.)
-        !prefac = prefac * (sp%gminval**(1.-sp%p2) - sp%gmax**(1.-sp%p2))
-        !prefac = prefac / (sp%gminval**(2.-sp%p2) - sp%gmax**(2.-sp%p2)) 
-        !prefac=prefac/(m*c2)
+        prefac = 3.*(sp%p2-2.) / (sp%p2-1.)
+        prefac = prefac * (sp%gminval**(1.-sp%p2) - sp%gmax**(1.-sp%p2))
+        prefac = prefac / (sp%gminval**(2.-sp%p2) - sp%gmax**(2.-sp%p2)) 
+        prefac=prefac/(m*c2)
 
-        !from total pressure - ignore gamma max
+        !from total pressure - ignoring gamma max
         !prefac = 3.*(sp%p2-2.) / ((sp%p2-1.)*sp%gminval) / (m*c2)
 
-        ! nonthermal number density - from partial pressure, p=2
-        !prefac = 3. / ((sp%p2-1.)) / (m*c2)
-        prefac = 3.* (sp%gminval**(1.-sp%p2) - sp%gmax**(1.-sp%p2)) / ((sp%p2-1.) * (m*c2))
+        ! nonthermal number density - from partial pressure, p=2 ONLY
+        !prefac = 3.* (sp%gminval**(1.-sp%p2) - sp%gmax**(1.-sp%p2)) / ((sp%p2-1.) * (m*c2))
         
         ! cacluate number density and mass density
         rhocgs = prefac * pcgs * mp
@@ -1227,9 +1212,10 @@
         !write(6,*) 'max b', maxval(bcgs)
         !write(6,*) 'max p', maxval(f%p)
         
-        !temperature and thermal energy density is zero
+        ! the temperature and thermal energy density is zero
         ncgs=ncgsnth;
         tcgs=0.
+
         end subroutine convert_fluidvars_rrjet
 
         subroutine convert_fluidvars_hotspot(f,ncgs,ncgsnth,bcgs,tcgs,sp)

@@ -565,12 +565,14 @@
 
      
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-      !AC -- simple approx change, taking gmax->infty
-      !and extending limits of integration from 0 - infty
+
 
       ! CORRECT
       A=(p-1d0)*nnth/(gmin**(1d0-p)-gmax**(1d0-p))
       !call get_polsynchpl_facs(xmin,xmax,p,gxfac,gpfac,gvfac,gafac,gapfac,gavfac)
+
+      !AC -- simple approx change, taking gmax->infty
+      !and extending limits of integration from 0 - infty
 
       ! APPROX
       gxfac = (2d0**((p-3d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0-1d0/12d0)*(p + 7d0/3d0)/(p + 1d0)

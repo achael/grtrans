@@ -300,8 +300,8 @@ def display_grtrans_image(imdata,nvec=25,veccut=0.005,tmax=1.e10,pmax=1.e10,blur
     m_im[np.logical_not(mask)]=0.
 
     # ticks
-    xticks = ticks(NPIX, 2*size/NPIX)
-    yticks = ticks(NPIX, 2*size/NPIX)
+    xticks = ticks(NPIX, FOV/float(NPIX))
+    yticks = ticks(NPIX, FOV/float(NPIX))
 
     # display Stokes I 
     plt.figure(0)

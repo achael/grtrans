@@ -7,9 +7,10 @@
 
       namelist /geodata/   standard,mumin,mumax,nmu,phi0,spin, uout,uin, rcut, &
        nrotype, gridvals, nn, i1, i2, extra, debug
-      namelist /fluiddata/ fname, dt, nt, nload, nmdot, mdotmin, mdotmax, sigcut, betaeconst,ximax
-      namelist /emisdata/  ename, mbh, nfreq, fmin, fmax, muval, gmin, gmax, p1, p2, fpositron, jetalpha, &
-           stype, delta, nweights, coefindx
+      namelist /fluiddata/ fname, dt, nt, nload, nmdot, mdotmin, mdotmax, sigcut, & 
+                           betaeconst, betaecrit, ximax, bscl, pscl,pegasratio
+      namelist /emisdata/  ename, mbh, nfreq, fmin, fmax, muval, gmin, gmax, p1, p2, &
+                           fpositron, jetalpha, stype, delta, nweights, coefindx
       namelist /general/   use_geokerr, nvals, iname, cflag
 ! namelists for fluid models
 ! AC koral will share same structure as harm...
@@ -24,7 +25,7 @@
       logical :: use_geokerr
       real(kind=8) :: mumax,mumin,spin,rcut,a1,a2,b1,b2,mbh,uout,uin, & 
            fmin,fmax,dt,mdotmin,mdotmax,phi0,muval,gmin,gmax,p1,p2,fpositron, &
-           jetalpha, delta, sigcut, betaeconst,ximax
+           jetalpha, delta, sigcut, betaeconst,betaecrit, ximax, bscl, pscl,pegasratio
       character(len=250) :: ename,fname,iname,stype
       real(kind=8), dimension(:), allocatable :: freqs,mdots,mu0
       real(kind=8), dimension(4) :: gridvals

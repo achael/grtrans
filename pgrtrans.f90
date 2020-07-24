@@ -16,7 +16,8 @@
             cflag, extra, debug,outfile, fdfile,fhfile,fgfile,fsim,fnt,findf,fnfiles,fjonfix, &
             fnw,fnfreq_tab,fnr,foffset,fdindf,fmagcrit,frspot,fr0spot,fn0spot,ftscl,frscl, &
             fwmin,fwmax,ffmin,ffmax,frmax,fsigt,ffcol,fmdot,fnscl,fnnthscl,fnnthp,fbeta, &
-            fbl06,fnp,ftp,frin,frout,fthin,fthout,fphiin,fphiout,fscalefac,sigcut, betaeconst, ximax, &
+            fbl06,fnp,ftp,frin,frout,fthin,fthout,fphiin,fphiout,fscalefac,sigcut, &
+            betaeconst, betaecrit, ximax, bscl,pscl,pegasratio, &
             epcoefindx,epotherargs,nepotherargs)
            
              use omp_lib
@@ -53,7 +54,8 @@
                  fnr,foffset,fdindf,fmagcrit,fbl06
             real(8), intent(in) :: frspot,fr0spot,fn0spot,ftscl,frscl,fwmin,fwmax,ffmin, &
                  ffmax,frmax,fsigt,ffcol,fmdot,fnnthp,fnnthscl,fnscl,fbeta,ftp,fnp, &
-                 frin,frout,fthin,fthout,fphiin,fphiout,fscalefac,sigcut,betaeconst,ximax
+                 frin,frout,fthin,fthout,fphiin,fphiout,fscalefac,sigcut, &
+                 betaeconst,betaecrit, ximax, bscl,pscl,pegasratio
             real(8), dimension(nepotherargs), intent(in) :: epotherargs
 !            integer, intent(in) :: nepcoefindx
             integer, dimension(7), intent(in) :: epcoefindx
@@ -135,7 +137,10 @@
                sparams(iii)%fpositron=fpositron
                sparams(iii)%sigcut=sigcut
                sparams(iii)%betaeconst=betaeconst
+               sparams(iii)%betaecrit=betaecrit
                sparams(iii)%ximax=ximax
+               sparams(iii)%bscl=bscl
+               sparams(iii)%pegasratio=pegasratio
                call assign_source_params_type(sparams(iii),stype)
             enddo
             allocate(c(NCAMS))
@@ -166,7 +171,7 @@
             fnw,fnfreq_tab,fnr,foffset,fdindf,fmagcrit,frspot,fr0spot,fn0spot,ftscl,frscl, &
             fwmin,fwmax,ffmin,ffmax,frmax,fsigt,ffcol,fmdot,mbh,fnscl,fnnthscl,fnnthp,fbeta, &
             fbl06,fnp,ftp,frin,frout,fthin,fthout,fphiin,fphiout, &
-            fscalefac,sigcut,betaeconst,ximax)
+            fscalefac,sigcut,betaeconst,betaecrit,ximax,bscl,pscl,pegasratio)
             write(6,*) 'load fluid model ',fname
             call load_fluid_model(fname,spin,fargs)
 

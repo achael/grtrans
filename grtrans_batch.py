@@ -57,7 +57,11 @@ class grtrans_inputs:
         self.p2=3.5
         self.fpositron=0.
         self.betaeconst=1.e-4
+        self.betaecrit=-1.
         self.ximax=10.
+        self.bscl=1.e4
+        self.pscl=1.
+        self.pegasrati=-1.
         self.epotherargs=[1.,1.]
         self.epcoefindx=[1,1,1,1,1,1,1]
         self.jetalpha=0.02
@@ -185,7 +189,7 @@ class grtrans_inputs:
         names=['geodata','fluiddata','emisdata','general','harm','analytic'] #!AC ? 
         args=['standard','mumin','mumax','nmu','phi0','spin','uout','uin','rcut','nrotype','gridvals','nn','i1','i2','extra','debug']
         nargs=[len(args)]
-        args1=['fname','dt','nt','nload','nmdot','mdotmin','mdotmax','sigcut','betaeconst','ximax']
+        args1=['fname','dt','nt','nload','nmdot','mdotmin','mdotmax','sigcut','betaeconst','betaecrit','ximax','bscl','pscl','pegasratio']
         nargs.append(len(args1))
         args2=['ename','mbh','nfreq','fmin','fmax','muval','gmin','gmax','p1','p2','fpositron','jetalpha','stype','delta','nweights','coefindx']
         nargs.append(len(args2))
@@ -214,7 +218,7 @@ class grtrans_inputs:
 #        nnstr = str(self.nn[0])+','+str(self.nn[1])+','+str(self.nn[2])
 #        gridstr = str(self.gridvals[0])+','+str(self.gridvals[1])+','+str(self.gridvals[
         vals=[self.standard,self.mumin,self.mumax,self.nmu,self.phi0,self.spin,self.uout,self.uin,self.rcut,self.nrotype,gridstr,nnstr,self.i1,self.i2,self.extra,self.debug]
-        vals.extend(["'"+self.fname+"'",self.dt,self.nt,self.nload,self.nmdot,self.mdotmin,self.mdotmax,self.sigcut,self.betaeconst,self.ximax])
+        vals.extend(["'"+self.fname+"'",self.dt,self.nt,self.nload,self.nmdot,self.mdotmin,self.mdotmax,self.sigcut,self.betaeconst,self.betaecrit,self.ximax,self.bscl,self.pscl,self.pegasratio])
         vals.extend(["'"+self.ename+"'",self.mbh,self.nfreq,self.fmin,self.fmax,self.muval,self.gmin,self.gmax,self.p1,self.p2,self.fpositron,self.jetalpha,"'"+self.stype+"'",self.delta,self.nweights,cindxstr])
         vals.extend([self.use_geokerr,self.nvals,"'"+self.iname+"'",self.cflag])
         print(self.fname)
