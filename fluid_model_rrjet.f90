@@ -26,6 +26,7 @@ module fluid_model_rrjet
         subroutine rrjet_vals(x0,a,rho,p,b,u,bmag)
         type (four_Vector), intent(in), dimension(:) :: x0
         real, intent(in) :: a
+        real :: zcutoff
         real(kind=8), dimension(size(x0)) :: done
         real, dimension(size(x0)) :: x2,x1,zm,zr,theta,s,z,logz,xi,fone
         real, dimension(size(x0)) :: omega, phi, phiprime, current, Bs, Bz 
@@ -163,7 +164,8 @@ module fluid_model_rrjet
         rho = p ! Convert pressure to number density in  convert_fluidvars_rrjet
 
         ! Zero everything where xi>ximax and z<2
-        where((xi.gt.ximax))!.or.(abs(z).le.2d0).or.(abs(z).ge.1000d0))
+        zcutoff=0.d0
+        where((xi.gt.ximax).or.(abs(z).le.zcutoff))
            !u%data(1) = dzero;
            !u%data(2) = dzero;
            !u%data(3) = dzero;

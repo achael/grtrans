@@ -16,7 +16,7 @@ from scipy.interpolate import interp1d
 
 # Run parameters
 RUN_IMAGE = True    # run image
-RUN_SPECTRUM = False # run spectrum 
+RUN_SPECTRUM = True # run spectrum 
 RERUN = True      # rerun 
 SAVEOUT = True    # save output images
 DISPLAYOUT = True # display output image(s)
@@ -25,34 +25,40 @@ DISPLAYOUT = True # display output image(s)
 PEGASRATIO = -1 #0.1    # ratio of electron to gas pressure (-1 to not use this model)
                         # THIS WILL OVERWRITE THE OTHER MODELS IF NOT EQUAL TO -1 
 
-BETAECONST = 1.e-4      # constant bete0
+BETAECONST = 1.e-2      # constant bete0
 BETAECRIT = -1          # critical beta for exponential supression (-1 uses constant betae)
 XIMAX = 10.             # maximum xi=s^2/z defining jet edge
-BSCL = 1.e4             # magnetic field scale -- horizon flux = bscl * rg^2
-PSCL = 1.e3             # pressure scale TODO THIS WAS CHOSEN SOMEWHAT ARBITRARILY!
-GAMMAMIN = 100          # minimum gamma for power law distribution
-PNTH = 2.01             # nonthermal power law index
-FPOSITRON=0             # 0 < npositron/nelectron < 1
+#BSCL = 1.e4            # magnetic field scale -- horizon flux = bscl * rg^2 - Richard original
+BSCL = 660.             # should correspond to field at horizon~20 Gauss, PBZ~6x10^42 erg/s for a=.5
+
+PSCL = (BSCL**2)/(8*np.pi)   # pressure scale
+GAMMAMIN = 50           # minimum gamma for power law distribution
+#GAMMAMIN = 100           # minimum gamma for power law distribution
+PNTH =  4.0             # nonthermal power law index
+FPOSITRON = 0           # 0 < npositron/nelectron < 1
 
 # Blackhole parameters
 MBH = 6.5e9    # bh mass / Msun
-DTOBH = 1.64e4 # bh distance / kpc
-A = 0.         # bh spin
-ANG = 20.      # polar angle (degrees)
-ROTANG = -73   # rotation angle in sky plane (degrees)
+DTOBH = 16.8e3 # bh distance / kpc
+A = 0.5        # bh spin
+ANG = 160.      # polar angle (degrees)
+ROTANG = 117   # rotation angle in sky plane (degrees)
 
 # Raytrace parameters - image
-RFGHZ = 43.        # Frequency in Ghz
-FOV = 200.          # FOV / Rg
-NPIX = 128          # number of pixels
-NGEO = 1000         # number of geodesic points
+RFGHZ = 230.       # Frequency in Ghz
+FOV = 120.         # FOV / Rg
+NPIX = 128         # number of pixels
+NGEO = 800         # number of geodesic points
 
 # Raytrace parameters - spectrum
-NFREQ = 10          # number of frequencies
-FOV_SPEC = 200      # FOV / Rg
-NPIX_SPEC = 64      # number of pixels in spectrum image
-FMIN = 1.e9         # minimum freq in spectrum
-FMAX = 1.e12        # maximum freq in spectrum 
+NFREQ = 10         # number of frequencies
+FOV_SPEC= 250     # FOV / Rg
+NPIX_SPEC = 100   # number of pixels in spectrum image
+FMIN = 1.e10      # minimum freq in spectrum
+FMAX = 1.e12      # maximum freq in spectrum 
+
+DEPTH = 5 # raytracing outer volume is DEPTH*FOV/2 in Rg
+           # might want to be large for nearly face on jet, but slower
 
 # Output File names
 OUTDIR = '../rrjet_and_riaf'                            # output directory
@@ -163,7 +169,7 @@ def run_grtrans_spectrum():
     """Run grtrans spectrum"""
 
     size_spec  = 0.5*FOV_SPEC      
-    uout_spec = 1./(2*size_spec)
+    uout_spec = 1./(DEPTH*size_spec)
 
     npix_x = NPIX_SPEC
     npix_y = NPIX_SPEC
@@ -223,7 +229,7 @@ def run_grtrans_spectrum():
     #linestyles=['solid','dashdot','dashed']
     ls = 'solid'
 
-    spec_interp = interp1d(np.log10(freqs), np.log10(spec))
+    spec_interp = interp1d(np.log10(freqs), np.log10(spec), kind=3)
     logfreqs_plot = np.linspace(np.log10(FMIN), np.log10(FMAX), 500)
     logspec_plot = spec_interp(logfreqs_plot)
 

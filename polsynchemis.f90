@@ -569,19 +569,19 @@
 
       ! CORRECT
       A=(p-1d0)*nnth/(gmin**(1d0-p)-gmax**(1d0-p))
-      !call get_polsynchpl_facs(xmin,xmax,p,gxfac,gpfac,gvfac,gafac,gapfac,gavfac)
+      call get_polsynchpl_facs(xmin,xmax,p,gxfac,gpfac,gvfac,gafac,gapfac,gavfac)
 
       !AC -- simple approx change, taking gmax->infty
       !and extending limits of integration from 0 - infty
 
       ! APPROX
-      gxfac = (2d0**((p-3d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0-1d0/12d0)*(p + 7d0/3d0)/(p + 1d0)
-      gpfac = (2d0**((p-3d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0-1d0/12d0)
-      gvfac = (2d0**((p-2d0)/2d0))*GAMMA(p/4d0+1d0/3d0)*GAMMA(p/4d0+2d0/3d0)*(p + 2d0)/p
+      !gxfac = (2d0**((p-3d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0-1d0/12d0)*(p + 7d0/3d0)/(p + 1d0)
+      !gpfac = (2d0**((p-3d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0-1d0/12d0)
+      !gvfac = (2d0**((p-2d0)/2d0))*GAMMA(p/4d0+1d0/3d0)*GAMMA(p/4d0+2d0/3d0)*(p + 2d0)/p
 
-      gafac  = (2d0**((p-2d0)/2d0))*GAMMA(p/4d0+5d0/6d0)*GAMMA(p/4d0+1d0/6d0)*(p + 10d0/3d0)/(p + 2d0)
-      gapfac = (2d0**((p-2d0)/2d0))*GAMMA(p/4d0+5d0/6d0)*GAMMA(p/4d0+1d0/6d0)
-      gavfac = (2d0**((p-1d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0+11d0/12d0)*(p + 3d0)/(p + 1d0)
+      !gafac  = (2d0**((p-2d0)/2d0))*GAMMA(p/4d0+5d0/6d0)*GAMMA(p/4d0+1d0/6d0)*(p + 10d0/3d0)/(p + 2d0)
+      !gapfac = (2d0**((p-2d0)/2d0))*GAMMA(p/4d0+5d0/6d0)*GAMMA(p/4d0+1d0/6d0)
+      !gavfac = (2d0**((p-1d0)/2d0))*GAMMA(p/4d0+7d0/12d0)*GAMMA(p/4d0+11d0/12d0)*(p + 3d0)/(p + 1d0)
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 
       ! emission 
