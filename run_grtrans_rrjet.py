@@ -18,11 +18,11 @@ from scipy.interpolate import interp1d
 
 # Run parameters
 FIND_BSCL = True
-RUN_IMAGE = True     # run image
+RUN_IMAGE = False      # run image
 RUN_SPECTRUM = True  # run spectrum 
-RERUN = True         # rerun 
-SAVEOUT = True       # save output images
-DISPLAYOUT = True    # display output image(s)
+RERUN = True          # rerun 
+SAVEOUT = True        # save output images
+DISPLAYOUT = True     # display output image(s)
 
 # RRJET parameters -- these can be changed in function args below
 PEGASRATIO = -1 #0.1    # ratio of electron to gas pressure (-1 to not use this model)
@@ -32,15 +32,16 @@ BETAECONST = 1.e-2      # constant bete0
 BETAECRIT = -1          # critical beta for exponential supression (-1 uses constant betae)
 XIMAX = 10.             # maximum xi=s^2/z defining jet edge
 #BSCL = 1.e4            # magnetic field scale -- horizon flux = bscl * rg^2 - Richard original
-BSCL = 620.             # should correspond to field at horizon~20 Gauss, PBZ~6x10^42 erg/s for a=.5
+BSCL = 860.             # should correspond to field at horizon~20 Gauss, PBZ~6x10^42 erg/s for a=.5
 BSCLMIN= 1.             # bscl for search
 BSCLMAX=10000. 
+FLUX = 1.5              # desired flux in Jy
 
 #PSCL = (BSCL**2)/(8*np.pi)   # pressure scale -- this is fixed below
 GAMMAMIN = 10           # minimum gamma for power law distribution
 GAMMAMAX = 5.e3           # maximum gamma for power law distribution
 PNTH =  3.1             # nonthermal power law index
-FPOSITRON = 0           # 0 < npositron/nelectron < 1
+FPOSITRON = 1           # 0 < npositron/nelectron < 1
 
 # Blackhole parameters
 MBH = 6.5e9    # bh mass / Msun
@@ -50,18 +51,18 @@ ANG = 160.      # polar angle (degrees)
 ROTANG = 117   # rotation angle in sky plane (degrees)
 
 # Raytrace parameters - image
-FLUX = 1.5           # desired flux in Jy
+
 RFGHZ = 230.       # Frequency in Ghz
 FOV = 120.         # FOV / Rg
-NPIX = 128         # number of pixels
-NGEO = 800         # number of geodesic points
+NPIX = 128          # number of pixels
+NGEO = 1000         # number of geodesic points
 
 # Raytrace parameters - spectrum
-NFREQ = 10         # number of frequencies
-FOV_SPEC= 120     # FOV / Rg
-NPIX_SPEC = 128   # number of pixels in spectrum image
-FMIN = 1.e9      # minimum freq in spectrum
-FMAX = 1.e16      # maximum freq in spectrum 
+NFREQ = 20         # number of frequencies
+FOV_SPEC= FOV      # FOV / Rg
+NPIX_SPEC = NPIX   # number of pixels in spectrum image
+FMIN = 1.e9        # minimum freq in spectrum
+FMAX = 1.e16       # maximum freq in spectrum 
 
 DEPTH = 5 # raytracing outer volume is DEPTH*FOV/2 in Rg
            # might want to be large for nearly face on jet, but slower
@@ -115,6 +116,10 @@ def run_grtrans_image(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
     # pressure scale is fixed!
     pscl = (bscl**2)/(8*np.pi) 
 
+    epcoefindx=[1,1,1,1,1,1,1]
+    # TO TURN OFF FARADAY CONVERSTION
+    #epcoefindx=[1,1,1,1,0,1,1]
+
     x=gr.grtrans()
     x.write_grtrans_inputs(oname+'_im.in', oname=oname+'_im.out',
                            fname='RRJET', phi0=0., pegasratio=pegasratio,
@@ -123,6 +128,7 @@ def run_grtrans_image(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
                            nfreq=1,fmin=RFGHZ*1.e9,fmax=RFGHZ*1.e9,
                            gmin=gmin, gmax=gmax, p2=pnth, p1=pnth,
                            fpositron=fpositron,
+                           epcoefindx=epcoefindx,
                            ename='POLSYNCHPL',
                            nvals=4,
                            spin=A, standard=1,
@@ -192,14 +198,15 @@ def findbscl(flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
     """ run grtrans single image to find the bscl that gives the correct flux with bisection, 
         for all other parameters fixed """
 
+    print('FPOSITRON', fpositron)
     # convergance parameters
     bedge_stop = 1
     fluxconvratio = .05
     itermax = 20
 
     # these image parameters are fixed for now
-    fov_search = 60.
-    npix_search = 64
+    fov_search = FOV/2.
+    npix_search = int(NPIX/2)
     
     size  = 0.5*fov_search         
     uout = 1./(10.*size)
@@ -222,14 +229,14 @@ def findbscl(flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
         # pressure scale is fixed!
         pscl = (bscl**2)/(8*np.pi) 
         x=gr.grtrans()
-        x.write_grtrans_inputs(oname+'_SEARCh.in', oname=oname+'_SEARCH.out',
+        x.write_grtrans_inputs(oname+'_SEARCH.in', oname=oname+'_SEARCH.out',
                                fname='RRJET', phi0=0., pegasratio=pegasratio,
                                betaeconst=betaeconst, betaecrit=betaecrit, 
                                ximax=XIMAX, bscl=bscl, pscl=pscl,
                                nfreq=1,fmin=RFGHZ*1.e9,fmax=RFGHZ*1.e9,
                                gmin=gmin, gmax=gmax, p2=pnth, p1=pnth,
                                fpositron=fpositron,
-                               ename='SYNCHPL',
+                               ename='POLSYNCHPL',
                                nvals=1,
                                spin=A, standard=1,
                                uout=uout,
@@ -308,7 +315,7 @@ def run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
                            gmin=gmin, gmax=gmax, p2=pnth, p1=pnth,
                            fpositron=fpositron,
                            ename='POLSYNCHPL',
-                           nvals=1,
+                           nvals=4,
                            spin=A, standard=1,
                            uout=uout_spec,
                            mbh=MBH,
@@ -758,6 +765,6 @@ if __name__=='__main__':
         run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
                              betaeconst=BETAECONST,betaecrit=BETAECRIT,
                              bscl=bscl,gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH)
-    print(bscl)
+    print('BSCL', bscl)
     if DISPLAYOUT:
         plt.show()
