@@ -30,14 +30,14 @@ BETA = 10.              # plasma beta
 NTHFRAC = .01           # fraction of nonthermal electrons
 #NNTHSCL = 1.e5         # scaling factor for nonthermal electron number density
 GAMMAMIN = 100          # minimum gamma for power law distribution
-GAMMAMAX = 1.e5         # maximum gamma for power law distribution         
+GAMMAMAX = 1.e6         # maximum gamma for power law distribution         
 PNTH = 3.5              # nonthermal power law index
 FPOSITRON=0             # 0 < npositron/nelectron < 1
 
 NSCL = 1.0e7            # scaling factor for thermal electron number density
 NSCLMIN= 1.e5           # nscl for search
 NSCLMAX=1.e10 
-FLUX = 3                # desired flux in Jy
+FLUX = 3.1              # desired flux in Jy
 
 BLO6 = 0                # Use Broderick 06 conventions (1) or Broderick 09 conventions (0)
 NTH_RADIAL_PLAW = 2.02  # radial power law for nonthermal electrons (fixed to -2.02 in BL11)
@@ -57,7 +57,7 @@ NGEO = 500          # number of geodesic points
 
 # Raytrace parameters - spectrum
 NFREQ = 10          # number of frequencies
-FOV_SPEC = 100      # FOV / Rg
+FOV_SPEC = 50 #100      # FOV / Rg
 NPIX_SPEC = 64      # number of pixels in spectrum image
 FMIN = 1.e9         # minimum freq in spectrum
 FMAX = 1.e14        # maximum freq in spectrum 
