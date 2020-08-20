@@ -4,7 +4,8 @@
 
 # First make grtrans with 'make' 
 # Then run this in python
-
+from __future__ import division
+from __future__ import print_function
 import numpy as np
 import grtrans_batch as gr
 import matplotlib.pyplot as plt
@@ -14,14 +15,16 @@ import astropy.io.fits as fits
 import scipy.ndimage.interpolation as interpolation
 from scipy.interpolate import interp1d
 
-# Run parameters
-RUN_IMAGE = True    # run image
-RUN_SPECTRUM = True # run spectrum 
-RERUN = True      # rerun 
-SAVEOUT = True    # save output images
-DISPLAYOUT = True # display output image(s)
 
-# RRJET parameters
+# Run parameters
+FIND_BSCL = True
+RUN_IMAGE = True     # run image
+RUN_SPECTRUM = True  # run spectrum 
+RERUN = True         # rerun 
+SAVEOUT = True       # save output images
+DISPLAYOUT = True    # display output image(s)
+
+# RRJET parameters -- these can be changed in function args below
 PEGASRATIO = -1 #0.1    # ratio of electron to gas pressure (-1 to not use this model)
                         # THIS WILL OVERWRITE THE OTHER MODELS IF NOT EQUAL TO -1 
 
@@ -29,12 +32,14 @@ BETAECONST = 1.e-2      # constant bete0
 BETAECRIT = -1          # critical beta for exponential supression (-1 uses constant betae)
 XIMAX = 10.             # maximum xi=s^2/z defining jet edge
 #BSCL = 1.e4            # magnetic field scale -- horizon flux = bscl * rg^2 - Richard original
-BSCL = 660.             # should correspond to field at horizon~20 Gauss, PBZ~6x10^42 erg/s for a=.5
+BSCL = 620.             # should correspond to field at horizon~20 Gauss, PBZ~6x10^42 erg/s for a=.5
+BSCLMIN= 1.             # bscl for search
+BSCLMAX=10000. 
 
-PSCL = (BSCL**2)/(8*np.pi)   # pressure scale
-GAMMAMIN = 50           # minimum gamma for power law distribution
-#GAMMAMIN = 100           # minimum gamma for power law distribution
-PNTH =  4.0             # nonthermal power law index
+#PSCL = (BSCL**2)/(8*np.pi)   # pressure scale -- this is fixed below
+GAMMAMIN = 10           # minimum gamma for power law distribution
+GAMMAMAX = 5.e3           # maximum gamma for power law distribution
+PNTH =  3.1             # nonthermal power law index
 FPOSITRON = 0           # 0 < npositron/nelectron < 1
 
 # Blackhole parameters
@@ -45,6 +50,7 @@ ANG = 160.      # polar angle (degrees)
 ROTANG = 117   # rotation angle in sky plane (degrees)
 
 # Raytrace parameters - image
+FLUX = 1.5           # desired flux in Jy
 RFGHZ = 230.       # Frequency in Ghz
 FOV = 120.         # FOV / Rg
 NPIX = 128         # number of pixels
@@ -52,10 +58,10 @@ NGEO = 800         # number of geodesic points
 
 # Raytrace parameters - spectrum
 NFREQ = 10         # number of frequencies
-FOV_SPEC= 250     # FOV / Rg
-NPIX_SPEC = 100   # number of pixels in spectrum image
-FMIN = 1.e10      # minimum freq in spectrum
-FMAX = 1.e12      # maximum freq in spectrum 
+FOV_SPEC= 120     # FOV / Rg
+NPIX_SPEC = 128   # number of pixels in spectrum image
+FMIN = 1.e9      # minimum freq in spectrum
+FMAX = 1.e16      # maximum freq in spectrum 
 
 DEPTH = 5 # raytracing outer volume is DEPTH*FOV/2 in Rg
            # might want to be large for nearly face on jet, but slower
@@ -86,6 +92,7 @@ LumtoJy = 1.e23/(4*np.pi*bhdist**2)
 
 # Plotting parameters
 M87DIR =   './M87_data' # directory with Sgr A* data files
+NEWDATA = False         # Use new m87 SED from 2017 (LOWER TOTAL FLUX)
 cfun = 'afmhot'
 cfun2 =  'Spectral'
 xticks_maj = [1.e8,1.e10,1.e12,1.e14,1.e16]#1.e16,1.e18,1.e20,1.e22]
@@ -95,21 +102,27 @@ yticks_maj = [1.e39,1.e40,1.e41,1.e42]
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-def run_grtrans_image():
+def run_grtrans_image(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
+                      betaeconst=BETAECONST,betaecrit=BETAECRIT,
+                      bscl=BSCL,gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH):
     """ run grtrans single image"""
 
+    print("Run image, bscl=%.2f"%bscl)
 
     size  = 0.5*FOV         
     uout = 1./(10.*size)
 
+    # pressure scale is fixed!
+    pscl = (bscl**2)/(8*np.pi) 
+
     x=gr.grtrans()
     x.write_grtrans_inputs(oname+'_im.in', oname=oname+'_im.out',
-                           fname='RRJET', phi0=0., pegasratio=PEGASRATIO,
-                           betaeconst=BETAECONST, betaecrit=BETAECRIT, 
-                           ximax=XIMAX, bscl=BSCL, pscl=PSCL,
+                           fname='RRJET', phi0=0., pegasratio=pegasratio,
+                           betaeconst=betaeconst, betaecrit=betaecrit, 
+                           ximax=XIMAX, bscl=bscl, pscl=pscl,
                            nfreq=1,fmin=RFGHZ*1.e9,fmax=RFGHZ*1.e9,
-                           gmin=GAMMAMIN, gmax=1.e35, p2=PNTH, p1=PNTH,
-                           fpositron=FPOSITRON,
+                           gmin=gmin, gmax=gmax, p2=pnth, p1=pnth,
+                           fpositron=fpositron,
                            ename='POLSYNCHPL',
                            nvals=4,
                            spin=A, standard=1,
@@ -141,6 +154,13 @@ def run_grtrans_image():
     uvals = x.ivals[:,2,0]*LumFac*da*db*LumtoJy
     vvals = x.ivals[:,3,0]*LumFac*da*db*LumtoJy
     
+    # mask pixels with  I < 0 
+    imask = ivals < 0.
+    ivals[imask] = 0.
+    qvals[imask] = 0.
+    uvals[imask] = 0.
+    vvals[imask] = 0.
+
     # correct orientation for eht-imaging
     ivals =  (np.flipud(np.transpose(ivals.reshape((NPIX,NPIX))))).flatten()
     qvals =  -(np.flipud(np.transpose(qvals.reshape((NPIX,NPIX))))).flatten()
@@ -165,7 +185,106 @@ def run_grtrans_image():
 
         display_grtrans_image(imdata, tmax=tmax, pmax=pmax)
 
-def run_grtrans_spectrum():
+
+def findbscl(flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
+             betaeconst=BETAECONST,betaecrit=BETAECRIT,
+             gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH):
+    """ run grtrans single image to find the bscl that gives the correct flux with bisection, 
+        for all other parameters fixed """
+
+    # convergance parameters
+    bedge_stop = 1
+    fluxconvratio = .05
+    itermax = 20
+
+    # these image parameters are fixed for now
+    fov_search = 60.
+    npix_search = 64
+    
+    size  = 0.5*fov_search         
+    uout = 1./(10.*size)
+
+    bsclmin0 = bsclmin
+    bsclmax0 = bsclmax
+    for i in range(itermax): 
+
+        # bscl by bisection
+        bscl = (bsclmax+bsclmin)/2.
+        print("min/max/mid %.2f %.2f %.2f" %(bsclmin,bsclmax,bscl))
+
+        if bsclmax0-bscl < bedge_stop:
+            print("did not find solution -- to close to bsclmax!")
+            break
+        if bscl-bsclmin0 < bedge_stop:
+            print("did not find solution -- to close to bsclmin!")
+            break
+
+        # pressure scale is fixed!
+        pscl = (bscl**2)/(8*np.pi) 
+        x=gr.grtrans()
+        x.write_grtrans_inputs(oname+'_SEARCh.in', oname=oname+'_SEARCH.out',
+                               fname='RRJET', phi0=0., pegasratio=pegasratio,
+                               betaeconst=betaeconst, betaecrit=betaecrit, 
+                               ximax=XIMAX, bscl=bscl, pscl=pscl,
+                               nfreq=1,fmin=RFGHZ*1.e9,fmax=RFGHZ*1.e9,
+                               gmin=gmin, gmax=gmax, p2=pnth, p1=pnth,
+                               fpositron=fpositron,
+                               ename='SYNCHPL',
+                               nvals=1,
+                               spin=A, standard=1,
+                               uout=uout,
+                               mbh=MBH,
+                               nmu=1,mumin=mu,mumax=mu,
+                               gridvals=[-size,size,-size,size],
+                               nn=[npix_search,npix_search,NGEO],
+                               hindf=1,hnt=1,
+                               muval=1.)
+        print()
+        # run grtrans
+        x.run_grtrans()
+
+        # load image data
+        x.read_grtrans_output()
+
+        # pixel sizes
+        #da = x.ab[x.nx,0]-x.ab[0,0]
+        da = x.ab[x.ny,0]-x.ab[0,0] ##TODO -- is this right ordering? 
+        db = x.ab[1,1]-x.ab[0,1]
+        if (da!=db): raise Exception("pixel da!=db")
+        psize = da*(cmperrg/bhdist)
+
+        #image values
+        ivals = x.ivals[:,0,0]*LumFac*da*db*LumtoJy
+        imask = ivals < 0.
+        ivals[imask] = 0.
+
+        #total flux
+        tflux = np.sum(ivals)
+        tfluxdiff = tflux-flux
+        tfluxdiff_rel = np.abs(tfluxdiff/flux)
+
+        print("iter %i %.1f | %.3f/%.3f %.2f"%(i+1,bscl,tflux,flux,tfluxdiff_rel)) 
+
+        # flux must monotonically increase with bscl,  if all other params fixed
+        if tfluxdiff_rel < fluxconvratio:
+            print("solution: bscl=%.2f, tflux=%.3f" %(bscl,tflux))
+            break
+
+        if (tflux<flux):
+            bsclmin=bscl
+
+        elif (tflux>flux):
+            bsclmax=bscl
+
+        if i==itermax-1:
+            print("did not find solution -- reached itermax!")
+            break
+
+    return bscl
+
+def run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
+                         betaeconst=BETAECONST,betaecrit=BETAECRIT,
+                         bscl=BSCL,gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH):
     """Run grtrans spectrum"""
 
     size_spec  = 0.5*FOV_SPEC      
@@ -177,14 +296,17 @@ def run_grtrans_spectrum():
     size_x = size_spec
     size_y = size_spec
 
+    # pressure scale is fixed!
+    pscl = (bscl**2)/(8*np.pi) 
+
     x=gr.grtrans()
     x.write_grtrans_inputs(oname+'_spec.in', oname=oname+'_spec.out',
-                           fname='RRJET', phi0=0., pegasratio=PEGASRATIO,
-                           betaeconst=BETAECONST, betaecrit=BETAECRIT, 
-                           ximax=XIMAX, bscl=BSCL, pscl=PSCL,
+                           fname='RRJET', phi0=0., pegasratio=pegasratio,
+                           betaeconst=betaeconst, betaecrit=betaecrit, 
+                           ximax=XIMAX, bscl=bscl, pscl=pscl,
                            nfreq=NFREQ,fmin=FMIN,fmax=FMAX,
-                           gmin=GAMMAMIN, gmax=1.e35, p2=PNTH, p1=PNTH,
-                           fpositron=FPOSITRON,
+                           gmin=gmin, gmax=gmax, p2=pnth, p1=pnth,
+                           fpositron=fpositron,
                            ename='POLSYNCHPL',
                            nvals=1,
                            spin=A, standard=1,
@@ -210,7 +332,7 @@ def run_grtrans_spectrum():
  
     freqs = x.freqs
 
-    # plot Stokes I spectrum
+    # plot Stokes I spectrum -- nu*Lnu
     f=plt.figure(111,figsize=(16,16))
     plt.clf()
     ax=f.add_subplot(111)
@@ -239,6 +361,35 @@ def run_grtrans_spectrum():
 
     plt.legend()
 
+    # plot Stokes I spectrum -- Fnu
+    f=plt.figure(222,figsize=(16,16))
+    plt.clf()
+    ax=f.add_subplot(111)
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel('$\\nu$ (Hz)', size=26)
+    plt.ylabel('$F_{\\nu}$ (Jy)', size=26)
+    plt.xlim([1.e9,1.e16])
+    plt.ylim([1.e-5,10.])
+    plt.tick_params(axis='both',labelsize=22)
+    plt.ion()
+    ax = plot_m87_data_Jy(ax)
+
+    #linestyles=['solid','dashdot','dashed']
+    ls = 'solid'
+
+    spec = x.spec[0][0:NFREQ]*LumtoJy
+    spec_interp = interp1d(np.log10(freqs), np.log10(spec), kind=3)
+    logfreqs_plot = np.linspace(np.log10(FMIN), np.log10(FMAX), 500)
+    logspec_plot = spec_interp(logfreqs_plot)
+
+    #plt.plot(freqs, freqs*spec, 'k-', linewidth=2, label=r'I, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
+    plt.plot(10**logfreqs_plot, 10**(logspec_plot), 'k-',
+             linewidth=2, label=r'I, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
+
+    plt.legend()
 
 def display_grtrans_image(imdata,nvec=25,veccut=0.005,tmax=1.e10,pmax=1.e10,blur_kernel=0):
 
@@ -249,6 +400,7 @@ def display_grtrans_image(imdata,nvec=25,veccut=0.005,tmax=1.e10,pmax=1.e10,blur
     V_im =  V_im.reshape((NPIX,NPIX))
 
     # convert to brightness temperature Tb
+    totalflux = np.sum(I_im)
     factor = 3.254e13/((RFGHZ*1.e9)**2 * psize**2)
     I_im *= factor
     Q_im *= factor
@@ -285,7 +437,7 @@ def display_grtrans_image(imdata,nvec=25,veccut=0.005,tmax=1.e10,pmax=1.e10,blur
     im = plt.imshow(I_im, cmap=plt.get_cmap(cfun), interpolation='gaussian',vmin=0,vmax=tmax)
     cb = plt.colorbar(im, fraction=0.046, pad=0.04, orientation="vertical")
     cb.set_label('Tb (K)', fontsize=14)
-    plt.title(("Stokes I, %.2f GHz " % (RFGHZ)), fontsize=16)
+    plt.title(("Stokes I, %.2f GHz, %.2f Jy" % (RFGHZ, totalflux)), fontsize=16)
     plt.xticks(xticks[0], xticks[1])
     plt.yticks(yticks[0], yticks[1])
     plt.xlabel('x/rg')
@@ -472,51 +624,103 @@ def save_im_fits(imdata, fname, freq_ghz=RFGHZ,
 def plot_m87_data(ax):
 
     CAPSIZE = .8
+    if NEWDATA:
+        # Data from 2017 eht campaign
+        data1 =  np.loadtxt(M87DIR + '/m87_sed_2017.dat')
+        data=data1
+        freqsdat = data[:,1]
+        lumval = freqsdat*data[:,3] / LumtoJy
+        lumerr = freqsdat*data[:,4] / LumtoJy
+        (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt='o',
+                                  color='k',ecolor='k',markersize=4*CAPSIZE,
+                                  markerfacecolor=None,capthick=CAPSIZE,capsize=CAPSIZE*4)
 
-    # data table 1 -- core flux in quiescent --- lower resolution
-    data1 =  np.loadtxt(M87DIR + '/m87_data_1.txt')
-    data=data1
-    freqsdat = data[:,0]
-    lumval = freqsdat*data[:,1] / LumtoJy
-    lumerr = freqsdat*data[:,2] / LumtoJy
-    (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt='o',color='k',ecolor='k',markersize=4*CAPSIZE,
-                              markerfacecolor=None,capthick=CAPSIZE,capsize=CAPSIZE*4)
-    for cap in caps:
-        cap.set_color('black')
+        for cap in caps:
+            cap.set_color('black')
+    else:
+
+        # data table 1 -- core flux in quiescent --- lower resolution
+        data1 =  np.loadtxt(M87DIR + '/m87_data_1.txt')
+        data=data1
+        freqsdat = data[:,0]
+        lumval = freqsdat*data[:,1] / LumtoJy
+        lumerr = freqsdat*data[:,2] / LumtoJy
+        (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt='o',color='k',ecolor='k',
+                                  markersize=4*CAPSIZE,
+                                  markerfacecolor=None,capthick=CAPSIZE,capsize=CAPSIZE*4)
+        for cap in caps:
+            cap.set_color('black')
+
+        # Michael total flux
+        datam =  np.loadtxt(M87DIR + '/m87_data_michael.txt')
+        data=datam
+        freqsdat = data[:,0]
+        lumval = freqsdat*data[:,1] / LumtoJy
+        lumerr = freqsdat*data[:,2] / LumtoJy
+        (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt="v",color='c',ecolor='c',
+                                  markersize=6*CAPSIZE,capthick=2*CAPSIZE,capsize=CAPSIZE*4,zorder=10)
+        for cap in caps:
+            cap.set_color('c')
+            #cap.set_markeredgewidth(2)
+
+#        # Michael core flux
+#        datam =  np.loadtxt(M87DIR + '/m87_data_michael_core.txt')
+#        data=datam
+#        freqsdat = data[:,0]
+#        lumval = freqsdat*data[:,1] / LumtoJy
+#        lumerr = freqsdat*data[:,2] / LumtoJy
+#        (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt='^',color='m',ecolor='m',
+#                                  markersize=6*CAPSIZE,capthick=2*CAPSIZE,
+#                                  capsize=CAPSIZE*4, zorder=10)
+#        for cap in caps:
+#            cap.set_color('m')
 
 
-    # Michael total flux
-    datam =  np.loadtxt(M87DIR + '/m87_data_michael.txt')
-    data=datam
-    freqsdat = data[:,0]
-    lumval = freqsdat*data[:,1] / LumtoJy
-    lumerr = freqsdat*data[:,2] / LumtoJy
-    (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt="v",color='c',ecolor='c',
-                              markersize=6*CAPSIZE,capthick=2*CAPSIZE,capsize=CAPSIZE*4,zorder=10)
-    for cap in caps:
-        cap.set_color('c')
-        #cap.set_markeredgewidth(2)
+    return ax
 
-##    # Michael core flux
-#    datam =  np.loadtxt(M87DIR + '/m87_data_michael_core.txt')
-#    data=datam
-#    freqsdat = data[:,0]
-#    lumval = freqsdat*data[:,1] / LumtoJy
-#    lumerr = freqsdat*data[:,2] / LumtoJy
-#    (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt='^',color='m',ecolor='m',markersize=6*CAPSIZE,capthick=2*CAPSIZE,capsize=CAPSIZE*4, zorder=10)
-#    for cap in caps:
-#        cap.set_color('m')
+def plot_m87_data_Jy(ax):
 
-#    ax.set_xticks(xticks_min)
-#    ax.set_xticks(xticks_maj, minor=True)
-#    ax.set_xticklabels([], minor=True)
+    CAPSIZE = .8
 
-#    ax.set_yticks(yticks_maj)
-#    ax.set_yticks(yticks_min, minor=True)
-#    ax.set_yticklabels([], minor=True)
+    if NEWDATA:
+        # data from 2017 eht campaign
+        data1 =  np.loadtxt(M87DIR + '/m87_sed_2017.dat')
+        data=data1
+        freqsdat = data[:,1]
+        lumval = data[:,3] 
+        lumerr = data[:,4] 
+        (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt='o',
+                                  color='k',ecolor='k',markersize=4*CAPSIZE,
+                                  markerfacecolor=None,capthick=CAPSIZE,capsize=CAPSIZE*4)
+        for cap in caps:
+            cap.set_color('black')
+    else:
 
-#    plt.tick_params(axis='both',which='minor',length=5)
-#    plt.tick_params(axis='both',which='major',length=8)
+        # data table 1 -- core flux in quiescent --- lower resolution
+        data1 =  np.loadtxt(M87DIR + '/m87_data_1.txt')
+        data=data1
+        freqsdat = data[:,0]
+        lumval = data[:,1] 
+        lumerr = data[:,2] 
+        (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt='o',
+                                   color='k',ecolor='k',markersize=4*CAPSIZE,
+                                  markerfacecolor=None,capthick=CAPSIZE,capsize=CAPSIZE*4)
+        for cap in caps:
+            cap.set_color('black')
+
+
+        # Michael total flux
+        datam =  np.loadtxt(M87DIR + '/m87_data_michael.txt')
+        data=datam
+        freqsdat = data[:,0]
+        lumval = data[:,1] 
+        lumerr = data[:,2] 
+        (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt="v",color='c',ecolor='c',
+                                  markersize=6*CAPSIZE,capthick=2*CAPSIZE,capsize=CAPSIZE*4,zorder=10)
+        for cap in caps:
+            cap.set_color('c')
+            #cap.set_markeredgewidth(2)
+
     return ax
 
 def ticks(axisdim, psize, nticks=8):
@@ -535,12 +739,25 @@ def ticks(axisdim, psize, nticks=8):
     return (ticklocs, ticklabels)
 
 
-
 if __name__=='__main__':
     plt.close('all')
+
+    if FIND_BSCL:
+        bscl = findbscl(FLUX, BSCLMIN, BSCLMAX,
+                        fpositron=FPOSITRON,pegasratio=PEGASRATIO,
+                        betaeconst=BETAECONST,betaecrit=BETAECRIT,
+                        gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH)
+    else:
+        bscl=BSCL
+
     if RUN_IMAGE:
-        run_grtrans_image()
+        run_grtrans_image(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
+                          betaeconst=BETAECONST,betaecrit=BETAECRIT,
+                          bscl=bscl,gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH)
     if RUN_SPECTRUM:
-        run_grtrans_spectrum()
+        run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
+                             betaeconst=BETAECONST,betaecrit=BETAECRIT,
+                             bscl=bscl,gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH)
+    print(bscl)
     if DISPLAYOUT:
         plt.show()
