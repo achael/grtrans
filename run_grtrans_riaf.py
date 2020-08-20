@@ -3,7 +3,8 @@
 
 # First make grtrans with 'make' 
 # Then run this in python
-
+from __future__ import division
+from __future__ import print_function
 import numpy as np
 import grtrans_batch as gr
 import matplotlib.pyplot as plt
@@ -13,23 +14,33 @@ import astropy.io.fits as fits
 import scipy.ndimage.interpolation as interpolation
 from scipy.interpolate import interp1d
 
+RERUN = True      # rerun or  not
+
 # Run parameters
-RUN_IMAGE = False    # run image
+FIND_NSCL = True
+RUN_IMAGE = True    # run image
 RUN_SPECTRUM = True # run spectrum 
-RERUN = True      # rerun 
+
 SAVEOUT = True    # save output images
 DISPLAYOUT = True # display output image(s)
 
 # Broderick&Loeb 06 parameters
-NSCL = 1.0e7             # scaling factor for thermal electron number density
-NNTHSCL = 1.e5          # scaling factor for nonthermal electron number density
 TSCL = 1.5e11           # scaling factor for electron temperature
 BETA = 10.              # plasma beta
+NTHFRAC = .01           # fraction of nonthermal electrons
+#NNTHSCL = 1.e5         # scaling factor for nonthermal electron number density
+GAMMAMIN = 100          # minimum gamma for power law distribution
+GAMMAMAX = 1.e5         # maximum gamma for power law distribution         
+PNTH = 3.5              # nonthermal power law index
+FPOSITRON=0             # 0 < npositron/nelectron < 1
+
+NSCL = 1.0e7            # scaling factor for thermal electron number density
+NSCLMIN= 1.e5           # nscl for search
+NSCLMAX=1.e10 
+FLUX = 3                # desired flux in Jy
+
 BLO6 = 0                # Use Broderick 06 conventions (1) or Broderick 09 conventions (0)
 NTH_RADIAL_PLAW = 2.02  # radial power law for nonthermal electrons (fixed to -2.02 in BL11)
-GAMMAMIN = 100          # minimum gamma for power law distribution
-PNTH = 3.5              # nonthermal power law index
-FPOSITRON=0            # 0 < npositron/nelectron < 1
 
 # Blackhole parameters
 MBH = 4.1e6  # bh mass / Msun
@@ -40,12 +51,12 @@ ROTANG = 156 # rotation angle in sky plane (degrees)
 
 # Raytrace parameters - image
 RFGHZ = 230.        # Frequency in Ghz
-FOV = 30.           # FOV / Rg
-NPIX = 128          # number of pixels
+FOV = 50.           # FOV / Rg
+NPIX = 64           # number of pixels
 NGEO = 500          # number of geodesic points
 
 # Raytrace parameters - spectrum
-NFREQ = 20          # number of frequencies
+NFREQ = 10          # number of frequencies
 FOV_SPEC = 100      # FOV / Rg
 NPIX_SPEC = 64      # number of pixels in spectrum image
 FMIN = 1.e9         # minimum freq in spectrum
@@ -88,7 +99,8 @@ yticks_maj = [1.e30,1.e32,1.e34,1.e36]
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-def run_grtrans_image():
+def run_grtrans_image(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+                      nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX):
     """ run grtrans single image"""
 
 
@@ -97,13 +109,15 @@ def run_grtrans_image():
 
     x=gr.grtrans()
 
+    nthscl = nthfrac*nscl # nonthermal number density
+
     x.write_grtrans_inputs(oname+'_im.in', oname=oname+'_im.out',
                            fname='SARIAF', phi0=0.,
                            nfreq=1,fmin=RFGHZ*1.e9,fmax=RFGHZ*1.e9,
-                           gmin=GAMMAMIN, p2=PNTH, p1=PNTH,
-                           snscl=NSCL, ntscl=TSCL, snnthscl=NNTHSCL, 
-                           snnthp=NTH_RADIAL_PLAW, sbeta=BETA, sbl06=BLO6,
-                           fpositron=FPOSITRON,
+                           snscl=nscl, ntscl=tscl, snnthscl=nthscl, sbeta=beta,
+                           gmin=gmin, gmax=gmax, p2=pnth, p1=pnth,
+                           fpositron=fpositron,
+                           snnthp=NTH_RADIAL_PLAW, sbl06=BLO6,
                            ename='HYBRIDTHPL',
                            nvals=4,
                            spin=A, standard=1,
@@ -159,14 +173,112 @@ def run_grtrans_image():
 
         display_grtrans_image(imdata, tmax=tmax, pmax=pmax)
 
-def run_grtrans_spectrum():
+
+def findnscl(flux, nsclmin, nsclmax, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+             nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX):
+
+    """ run grtrans single image to find the nscl that gives the correct flux with bisection, 
+        for all other parameters fixed """
+
+    print('FPOSITRON', fpositron)
+    # convergance parameters
+    bedge_stop = 1
+    fluxconvratio = .05
+    itermax = 20
+
+    # these image parameters are fixed for now
+    fov_search = FOV/2.
+    npix_search = int(NPIX/2)
+    
+    size  = 0.5*fov_search         
+    uout = 1./(10.*size)
+
+    nsclmin0 = nsclmin
+    nsclmax0 = nsclmax
+    for i in range(itermax): 
+
+        # nscl by bisection
+        nscl = (nsclmax+nsclmin)/2.
+        print("min/max/mid %.2f %.2f %.2f" %(nsclmin,nsclmax,nscl))
+
+        if nsclmax0-nscl < bedge_stop:
+            print("did not find solution -- to close to nsclmax!")
+            break
+        if nscl-nsclmin0 < bedge_stop:
+            print("did not find solution -- to close to nsclmin!")
+            break
+
+        # pressure scale is fixed!
+        nthscl = nthfrac*nscl # nonthermal number density
+        x=gr.grtrans()
+        x.write_grtrans_inputs(oname+'_SEARCH.in', oname=oname+'_SEARCH.out',
+                               fname='SARIAF', phi0=0.,
+                               nfreq=1,fmin=RFGHZ*1.e9,fmax=RFGHZ*1.e9,
+                               snscl=nscl, ntscl=tscl, snnthscl=nthscl, sbeta=beta,
+                               gmin=gmin, gmax=gmax, p2=pnth, p1=pnth,
+                               fpositron=fpositron,
+                               snnthp=NTH_RADIAL_PLAW, sbl06=BLO6,
+                               ename='HYBRIDTHPL',
+                               nvals=4,
+                               spin=A, standard=1,
+                               uout=uout,
+                               mbh=MBH,
+                               nmu=1,mumin=mu,mumax=mu,
+                               gridvals=[-size,size,-size,size],
+                               nn=[npix_search,npix_search,NGEO],
+                               hindf=1,hnt=1,
+                               muval=1.)
+        print()
+        # run grtrans
+        x.run_grtrans()
+
+        # load image data
+        x.read_grtrans_output()
+
+        # pixel sizes
+        #da = x.ab[x.nx,0]-x.ab[0,0]
+        da = x.ab[x.ny,0]-x.ab[0,0] ##TODO -- is this right ordering? 
+        db = x.ab[1,1]-x.ab[0,1]
+        if (da!=db): raise Exception("pixel da!=db")
+        psize = da*(cmperrg/bhdist)
+
+        #image values
+        ivals = x.ivals[:,0,0]*LumFac*da*db*LumtoJy
+        imask = ivals < 0.
+        ivals[imask] = 0.
+
+        #total flux
+        tflux = np.sum(ivals)
+        tfluxdiff = tflux-flux
+        tfluxdiff_rel = np.abs(tfluxdiff/flux)
+
+        print("iter %i %.1f | %.3f/%.3f %.2f"%(i+1,nscl,tflux,flux,tfluxdiff_rel)) 
+
+        # flux must monotonically increase with nscl,  if all other params fixed
+        if tfluxdiff_rel < fluxconvratio:
+            print("solution: nscl=%.2f, tflux=%.3f" %(nscl,tflux))
+            break
+
+        if (tflux<flux):
+            nsclmin=nscl
+
+        elif (tflux>flux):
+            nsclmax=nscl
+
+        if i==itermax-1:
+            print("did not find solution -- reached itermax!")
+            break
+
+    return nscl
+
+def run_grtrans_spectrum(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+                         nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX):
     """Run grtrans spectrum"""
 
     # TODO fix
     #NPIX_SPEC = 501
     #size_spec = 500
 
-    FOV_SPEC=2000
     size_spec  = 0.5*FOV_SPEC      
     uout_spec = 1./(2*size_spec)
 
@@ -177,14 +289,15 @@ def run_grtrans_spectrum():
     size_y = size_spec
 
     x=gr.grtrans()
+    nthscl = nthfrac*nscl # nonthermal number density
     x.write_grtrans_inputs(oname+'_spec.in', oname=oname+'_spec.out',
                            fname='SARIAF', phi0=0.,
                            #nfreq=2,fmin=200.e9,fmax=230.e9,
                            nfreq=NFREQ,fmin=FMIN,fmax=FMAX,
-                           gmin=GAMMAMIN, p2=PNTH, p1=PNTH,
-                           snscl=NSCL, ntscl=TSCL, snnthscl=NNTHSCL, 
-                           snnthp=NTH_RADIAL_PLAW, sbeta=BETA, sbl06=BLO6,
-                           fpositron=FPOSITRON,
+                           snscl=nscl, ntscl=tscl, snnthscl=nthscl, sbeta=beta,
+                           gmin=gmin, gmax=gmax, p2=pnth, p1=pnth,
+                           fpositron=fpositron,
+                           snnthp=NTH_RADIAL_PLAW, sbl06=BLO6,
                            ename='HYBRIDTHPL',
                            nvals=1,
                            spin=A, standard=1,
@@ -212,7 +325,7 @@ def run_grtrans_spectrum():
  
     freqs = x.freqs
 
-    # plot Stokes I spectrum
+    # plot Stokes I spectrum -- nu*Lnu
     f=plt.figure(111,figsize=(16,16))
     plt.clf()
     ax=f.add_subplot(111)
@@ -222,7 +335,7 @@ def run_grtrans_spectrum():
     plt.yscale('log')
     plt.xlabel('$\\nu$ (Hz)', size=26)
     plt.ylabel('$\\nu L_{\\nu}$ (erg s$^{-1}$)', size=26)
-    plt.xlim([1.e9,1.e15])
+    plt.xlim([1.e9,1.e16])
     plt.ylim([1.e30,1.e36])
     plt.tick_params(axis='both',labelsize=22)
     plt.ion()
@@ -241,27 +354,35 @@ def run_grtrans_spectrum():
 
     plt.legend()
 
-    # Plot linear polarization  and Stokes V spectra
-#        specQ = x.spec[1][0:NFREQ]
-#        specU = x.spec[2][0:NFREQ]
-#        specP = np.sqrt(specQ**2 + specU**2)
-#        specV = np.abs(x.spec[3][0:NFREQ])
-#        plt.plot(freqs,freqs*specP,'b-',linewidth=2,label=r'P, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
-#        plt.plot(freqs,freqs*specV,'r-',linewidth=2,label=r'V, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
+    # plot Stokes I spectrum -- Fnu
+    f=plt.figure(222,figsize=(16,16))
+    plt.clf()
+    ax=f.add_subplot(111)
+    plt.rc('text', usetex=True)
+    plt.rc('font', family='serif')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel('$\\nu$ (Hz)', size=26)
+    plt.ylabel('$F_{\\nu}$ (Jy)', size=26)
+    plt.xlim([1.e9,1.e16])
+    plt.ylim([1.e-5,10.])
+    plt.tick_params(axis='both',labelsize=22)
+    plt.ion()
+    ax = plot_sgra_data_Jy(ax)
 
-#        f=plt.figure(2,figsize=(16,16))
-#        plt.rc('text', usetex=True)
-#        plt.rc('font', family='serif')
-#        #plt.title('fpositron=%.1f'%FPOSITRON)
-#        plt.xscale('log')
-#        plt.yscale('log')
-#        plt.xlim([1.e9,1.e15])
-#        plt.ylim([1.e-3,1])
+    #linestyles=['solid','dashdot','dashed']
+    ls = 'solid'
 
-#        plt.figure(2)
-#        plt.plot(freqs,specP/spec,'b-',linewidth=2,label=r'P/I, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
-#        plt.plot(freqs,specV/spec,'r-',linewidth=2,label=r'V/I, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
-#        plt.legend()
+    spec = x.spec[0][0:NFREQ]*LumtoJy
+    spec_interp = interp1d(np.log10(freqs), np.log10(spec), kind=3)
+    logfreqs_plot = np.linspace(np.log10(FMIN), np.log10(FMAX), 500)
+    logspec_plot = spec_interp(logfreqs_plot)
+
+    #plt.plot(freqs, freqs*spec, 'k-', linewidth=2, label=r'I, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
+    plt.plot(10**logfreqs_plot, 10**(logspec_plot), 'k-',
+             linewidth=2, label=r'I, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
+
+    plt.legend()
 
 def display_grtrans_image(imdata,nvec=25,veccut=0.005,tmax=1.e10,pmax=1.e10,blur_kernel=0):
 
@@ -402,7 +523,8 @@ def ticks(axisdim, psize, nticks=8):
     if nticks % 2: nticks -= 1
     tickspacing = float((axisdim-1))/nticks
     ticklocs = np.arange(0, axisdim+1, tickspacing) - 0.5
-    ticklabels= np.around(psize * np.arange((axisdim-1)/2.0, -(axisdim)/2.0, -tickspacing), decimals=1)
+    ticklabels= np.around(psize * np.arange((axisdim-1)/2.0, -(axisdim)/2.0, -tickspacing),
+                         decimals=1)
 
     return (ticklocs, ticklabels)
 
@@ -515,13 +637,16 @@ def plot_sgra_data(ax):
     #not upper limits
     mask = data[:,3] == 0
     mask2 = data[mask][:,4]==1
-    (_,caps,_) = plt.errorbar(freqsdat[mask][mask2],lumval[mask][mask2],yerr=lumerr[mask][mask2],fmt='o',color='r',
+    (_,caps,_) = plt.errorbar(freqsdat[mask][mask2],lumval[mask][mask2],
+                              yerr=lumerr[mask][mask2],fmt='o',color='r',
                               ecolor='r',markersize=12*CAPSIZE,capthick=CAPSIZE,capsize=CAPSIZE*15)
     for cap in caps:
         cap.set_color('red')
         #cap.set_markeredgewidth(2)
-    (_,caps,_) = plt.errorbar(freqsdat[mask][~mask2],lumval[mask][~mask2],yerr=lumerr[mask][~mask2],
-                              fmt='o',color='b',ecolor='b',markersize=12*CAPSIZE,capthick=CAPSIZE,capsize=CAPSIZE*15)
+    (_,caps,_) = plt.errorbar(freqsdat[mask][~mask2],lumval[mask][~mask2],
+                              yerr=lumerr[mask][~mask2],
+                              fmt='o',color='b',ecolor='b',markersize=12*CAPSIZE,
+                              capthick=CAPSIZE,capsize=CAPSIZE*15)
     for cap in caps:
         cap.set_color('blue')
         #cap.set_markeredgewidth(2)
@@ -530,7 +655,8 @@ def plot_sgra_data(ax):
     #upper limits
     mask = data[:,3] == 1
     (_,caps,_) = plt.errorbar(freqsdat[mask],lumval[mask],yerr=lumerr[mask],uplims=lumval[mask],
-                              fmt='.',color='g',ecolor='g',capthick=CAPSIZE,capsize=CAPSIZE*15,markersize=12*CAPSIZE)
+                              fmt='.',color='g',ecolor='g',capthick=CAPSIZE,
+                              capsize=CAPSIZE*15,markersize=12*CAPSIZE)
     for cap in caps:
         cap.set_color('green')
         #cap.set_markeredgewidth(10)
@@ -577,11 +703,108 @@ def plot_sgra_data(ax):
     return ax
 
 
+def plot_sgra_data_Jy(ax):
+    CAPSIZE = .5
+
+    # radio data
+    data=sgra_radio_data
+    freqsdat = data[:,0] * 1.e9
+    lumval = data[:,1] 
+    lumerr = data[:,2] 
+    (_,caps,_) = plt.errorbar(freqsdat,lumval,yerr=lumerr,fmt='o',color='k',ecolor='k',
+                              markersize=12*CAPSIZE,capthick=CAPSIZE,capsize=CAPSIZE*15)
+    for cap in caps:
+        cap.set_color('black')
+        #cap.set_markeredgewidth(2)
+
+    # infrared data
+    data = sgra_ir_data
+    freqsdat = 3.e8/ (data[:,0] * 1.e-6)
+    lumval = 1.e-3*data[:,1] 
+    lumerr = 1.e-3*data[:,2] 
+
+    #not upper limits
+    mask = data[:,3] == 0
+    mask2 = data[mask][:,4]==1
+    (_,caps,_) = plt.errorbar(freqsdat[mask][mask2],lumval[mask][mask2],
+                              yerr=lumerr[mask][mask2],fmt='o',color='r',
+                              ecolor='r',markersize=12*CAPSIZE,capthick=CAPSIZE,capsize=CAPSIZE*15)
+    for cap in caps:
+        cap.set_color('red')
+        #cap.set_markeredgewidth(2)
+    (_,caps,_) = plt.errorbar(freqsdat[mask][~mask2],lumval[mask][~mask2],
+                              yerr=lumerr[mask][~mask2],
+                              fmt='o',color='b',ecolor='b',markersize=12*CAPSIZE,
+                              capthick=CAPSIZE,capsize=CAPSIZE*15)
+    for cap in caps:
+        cap.set_color('blue')
+        #cap.set_markeredgewidth(2)
+
+
+    #upper limits
+    mask = data[:,3] == 1
+    (_,caps,_) = plt.errorbar(freqsdat[mask],lumval[mask],yerr=lumerr[mask],uplims=lumval[mask],
+                              fmt='.',color='g',ecolor='g',capthick=CAPSIZE,
+                              capsize=CAPSIZE*15,markersize=12*CAPSIZE)
+    for cap in caps:
+        cap.set_color('green')
+        #cap.set_markeredgewidth(10)
+
+
+#    #NIR spectral slope (Witzel 2013)
+#    nulnu_slope = 0.4
+#    nirmin_freq = 1.e13
+#    nirmax_freq = 1.e15
+#    norm = 4.e34
+#    plt.plot((nirmin_freq,nirmax_freq),(norm, norm*(nirmax_freq**(nulnu_slope))/(nirmin_freq**(nulnu_slope))),
+#              'r--',linewidth=2)
+
+#    # xray - 2-10 keV
+#    #flare
+#    #Neilsen 03
+#    freqs = np.array([2,10])/4.14e-18
+#    upper = np.array((2.0e35,2.0e35))
+#    lower = np.array((1.0e34,1.0e34))
+#    ax.add_patch(patches.Rectangle((2./4.14e-18,1.0e34),height=(2.0e35-1.0e34),width=8./4.14e-18,
+#                 facecolor='k',alpha=0.25, linestyle='--',linewidth=1.3))
+#    plt.fill_between(freqs, lower, upper, alpha=0.1, edgecolor='k', facecolor=None,)
+
+#    #quiescent
+#    #Baganoff 03
+#    #approx 10% believed to come from inner region
+#    upper = np.array((2.4e33,2.4e33))
+#    lower = np.array((2.4e32,2.4e32))
+#    ax.add_patch(patches.Rectangle((2./4.14e-18,2.4e32),height=(2.4e33-2.4e32),width=8./4.14e-18,
+#                 facecolor='k',alpha=0.25, linestyle=':',linewidth=1.3))
+#    plt.fill_between(freqs, lower, upper, alpha=0.1, edgecolor='k', facecolor=None, linestyle=':',linewidth=1.5)
+
+    # ticks and return
+#    ax.set_xticks(xticks_min)
+#    ax.set_xticks(xticks_maj, minor=True)
+#    ax.set_xticklabels([], minor=True)
+
+#    ax.set_yticks(yticks_maj)
+#    ax.set_yticks(yticks_min, minor=True)
+#    ax.set_yticklabels([], minor=True)
+
+    plt.tick_params(axis='both',which='minor',length=5)
+    plt.tick_params(axis='both',which='major',length=8)
+    return ax
+
 if __name__=='__main__':
     plt.close('all')
+    if FIND_NSCL and RERUN:
+        nscl = findnscl(FLUX, NSCLMIN, NSCLMAX, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+                        nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX)
+    else:
+        nscl = NSCL
+
     if RUN_IMAGE:
-        run_grtrans_image()
+        run_grtrans_image(nscl=nscl, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+                          nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX)
     if RUN_SPECTRUM:
-        run_grtrans_spectrum()
+        run_grtrans_spectrum(nscl=nscl, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+                       nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX)
+    print('NSCL', nscl)
     if DISPLAYOUT:
         plt.show()

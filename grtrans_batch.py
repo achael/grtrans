@@ -61,6 +61,7 @@ class grtrans_inputs:
         self.ximax=10.
         self.bscl=1.e4
         self.pscl=1.
+        self.pegasratio=-1.
         self.pegasrati=-1.
         self.epotherargs=[1.,1.]
         self.epcoefindx=[1,1,1,1,1,1,1]
