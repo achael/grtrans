@@ -26,12 +26,12 @@
       real(kind=8) :: mumax,mumin,spin,rcut,a1,a2,b1,b2,mbh,uout,uin, & 
            fmin,fmax,dt,mdotmin,mdotmax,phi0,muval,gmin,gmax,p1,p2,fpositron, &
            jetalpha, delta, sigcut, betaeconst,betaecrit, ximax, bscl, pscl,pegasratio
-      character(len=250) :: ename,fname,iname,stype
+      character(len=500) :: ename,fname,iname,stype
       real(kind=8), dimension(:), allocatable :: freqs,mdots,mu0
       real(kind=8), dimension(4) :: gridvals
       integer, dimension(3) :: nn
       ! fluid arguments
-      character(len=250) :: fdfile,fhfile,fgfile,fsim
+      character(len=500) :: fdfile,fhfile,fgfile,fsim
       integer :: fnt,findf,fnfiles,fjonfix,fnw,fnfreq_tab, &
            fnr,foffset,fdindf,fmagcrit,fbl06,nweights,nepotherargs
       integer, dimension(7) :: coefindx
@@ -46,7 +46,7 @@
       contains
 
         subroutine read_inputs(file)
-        character(len=20), intent(in) :: file
+        character(len=500), intent(in) :: file
         integer :: i
           open(unit=8, file=file)
           read(8,nml=geodata)

@@ -58,7 +58,7 @@
       end type
 
       type fluid_args
-         character(len=100) :: dfile,hfile,gfile,sim
+         character(len=500) :: dfile,hfile,gfile,sim
          integer :: nt,indf,nfiles,jonfix,nw,nfreq_tab,nr,offset, &
               dindf,magcrit,bl06
          real(8) :: rspot,r0spot,n0spot,tscl,rscl,wmin,wmax,fmin, &
@@ -139,7 +139,7 @@
              rin,rout,thin,thout,phiin,phiout,scalefac,sigcut,betaeconst,betaecrit,ximax,&
              bscl,pscl,pegasratio)
           type (fluid_args), intent(inout) :: fargs
-          character(len=100), intent(in) :: dfile,hfile,gfile,sim
+          character(len=500), intent(in) :: dfile,hfile,gfile,sim
           integer, intent(in) :: nt,indf,nfiles,jonfix,nw,nfreq_tab,nr,offset,dindf, &
                magcrit,bl06
           real(8), intent(in) :: rspot,r0spot,n0spot,tscl,rscl,wmin,wmax,fmin, &
@@ -169,8 +169,8 @@
 
         subroutine load_fluid_model(fname,a,fargs)
         real(kind=8), intent(in) :: a
-        character(len=20), intent(in) :: fname
-        character(len=20) :: ifile
+        character(len=500), intent(in) :: fname
+        character(len=500) :: ifile
         type (fluid_args) :: fargs
         if(fname=='COSMOS') then
 !          call initialize_cosmos_model(a,fargs)
@@ -255,7 +255,7 @@
 
         subroutine advance_fluid_timestep(fname,dt)
         real(kind=8), intent(in) :: dt
-        character(len=20), intent(in) :: fname
+        character(len=500), intent(in) :: fname
         if(fname=='COSMOS') then
 !         call advance_cosmos_timestep(dt)
         elseif(fname=='MB') then
@@ -292,7 +292,7 @@
         end subroutine advance_fluid_timestep
 
         subroutine initialize_fluid_model(f,fname,a,nup)
-        character(len=20), intent(in) :: fname
+        character(len=500), intent(in) :: fname
         type (fluid), intent(out) :: f
         integer, intent(in) :: nup
         real(kind=8), intent(in) :: a
@@ -389,7 +389,7 @@
         end subroutine initialize_fluid_model
  
         subroutine unload_fluid_model(fname)
-        character(len=20), intent(in) :: fname
+        character(len=500), intent(in) :: fname
         if(fname=='COSMOS') then
 !          call initialize_cosmos_model(a)
         elseif(fname=='MB') then
@@ -1668,7 +1668,7 @@
 
 ! source param routines
         subroutine assign_source_params_type(sp,type)
-          character(len=20), intent(in) :: type
+          character(len=500), intent(in) :: type
           type (source_params), intent(inout) :: sp
           if(type=='const') then
              sp%type=CONST

@@ -186,9 +186,6 @@ module fluid_model_rrjet
         end subroutine rrjet_vals
     
         subroutine init_rrjet(betaeconst0, betaecrit0, ximax0, bscl0,pscl0,pegasratio0)
-        !character(len=20), intent(in) :: ifile
-        !open(unit=8,file=ifile,form='formatted',status='old')
-          !read(8,nml=fluiddata)
           real(8), intent(in) :: betaeconst0, betaecrit0, ximax0, bscl0,pscl0,pegasratio0
           betaeconst = betaeconst0
           betaecrit = betaecrit0

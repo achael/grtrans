@@ -41,15 +41,15 @@
             real(kind=8), intent(in) :: mumax,mumin,rcut,mbh,uout,uin, & 
                  fmin,fmax,dt,mdotmin,mdotmax,phi0,muval,gmin,gmax,p1,p2,fpositron,jetalpha
             real(kind=8) :: a1,a2,b1,b2
-            character(len=100), intent(in) :: ename,fname,iname,stype
-            character(len=300) :: outfile
+            character(len=500), intent(in) :: ename,fname,iname,stype
+            character(len=500) :: outfile
             real(kind=8), dimension(:), allocatable :: mdots,mu0
 !            real(kind=8), dimension(nfreq), intent(out) :: freqs
             real(kind=8), dimension(4),intent(in) :: gridvals
             real(kind=8) :: spin
             integer, dimension(3), intent(in) :: nn
 ! FLUID ARGUMENTS
-            character(len=100), intent(in) :: fdfile,fhfile,fgfile,fsim
+            character(len=500), intent(in) :: fdfile,fhfile,fgfile,fsim
             integer, intent(in) :: fnt,findf,fnfiles,fjonfix,fnw,fnfreq_tab, &
                  fnr,foffset,fdindf,fmagcrit,fbl06
             real(8), intent(in) :: frspot,fr0spot,fn0spot,ftscl,frscl,fwmin,fwmax,ffmin, &
@@ -60,8 +60,6 @@
 !            integer, intent(in) :: nepcoefindx
             integer, dimension(7), intent(in) :: epcoefindx
             !INPUTS====================
-            !character(len=40), intent(in) :: outfile !,ifile
-            !       character(len=40) :: outfile,ifile
             integer :: nextra=0, inum, gunit, i, ncams, j, m, l, nparams, iii
             real(kind=8) :: wtime
             type (ray_set), dimension(:), allocatable :: c
@@ -71,7 +69,7 @@
             type (fluid_args) :: fargs
             type (source_params), dimension(:), allocatable :: sparams
             type (emis_params) :: eparams
-            character(len=20), dimension(3) :: knames,kdescs
+            character(len=500), dimension(3) :: knames,kdescs
             !FITS output relevant information
             knames(1)='nx'; knames(2)='ny'; kdescs(1)='# x pixels'
             kdescs(2)='# y pixels'

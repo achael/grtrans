@@ -65,7 +65,7 @@
 !         real(kind=8), intent(in) :: mbh1,mdot
          real(kind=8), intent(in), dimension(:) :: freqs
          integer, intent(in) :: gunit,i,l,nup, nfreq, nparams, extra, debug
-         character(len=100), intent(in) :: iname,fname,ename
+         character(len=500), intent(in) :: iname,fname,ename
          real(kind=8) :: fac
          real(kind=8), dimension(:), allocatable :: s2xi,c2xi,s2psi,c2psi, &
           rshift,ang,nu,cosne,tau,tau_temp,intvals,dummy,vrl,vtl,vpl,cosne2, &

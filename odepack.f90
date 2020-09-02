@@ -52,7 +52,7 @@
         integer :: oiopt,oitask,ojt,oneq,npts,i
         real(kind=8) :: tout, t0
         real(kind=8), intent(in), optional :: hmin, hmax
-        character(len=50) :: errmsg
+        character(len=500) :: errmsg
         oneq=size(y)
         npts=size(t)
         ojt=1; oitask=1; oiopt=0
@@ -111,7 +111,7 @@
         external f, jac
         real(kind=8), intent(inout), dimension(:) :: y
         real(kind=8), intent(inout) :: t
-        character(len=50), optional, intent(out) :: errmsg
+        character(len=500), optional, intent(out) :: errmsg
 !        write(6,*) 'lsoda: ',neq,y(1:2),tsave,t
 !        write(6,*) 'args: ',itol,rtol,atol,itask
 !        write(6,*) 'more: ',istate,iopt,lrw,liw,jt
@@ -134,7 +134,6 @@
 !        integer :: oiopt, oitask, ojt
 !        real(kind=8), intent(in), dimension(:) :: oatol, ortol
         real(kind=8), intent(in) :: oatol, ortol
-!        character(len=50), optional, intent(out) :: errmsg
         if (present(oneq)) then
           neq=oneq
         else
@@ -171,7 +170,7 @@
         end subroutine lsoda_init
  
         subroutine lsoda_err(errmsg)
-        character(len=50), optional, intent(out) :: errmsg
+        character(len=500), optional, intent(out) :: errmsg
 ! Check for ISTATE errors:
         if (present (errmsg)) then
         SELECT CASE (istate)

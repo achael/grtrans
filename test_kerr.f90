@@ -21,7 +21,7 @@
       type (geokerr_args) :: gargs
       type (fluid_args) :: fargs
       type (fluid) :: f
-      character(len=100) :: file='inputs.in'
+      character(len=500) :: file='inputs.in'
 
       call read_inputs(file)
       call assign_fluid_args(fargs,fdfile,fhfile,fgfile,fsim,fnt,findf,fnfiles,fjonfix, &

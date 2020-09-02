@@ -24,7 +24,7 @@
          subroutine initialize_rad_trans(r,iname,npts,neq,extra)
          type (rad_trans), intent(out) :: r
          integer, intent(in) :: npts, neq,extra
-         character(len=20), intent(in) :: iname
+         character(len=500), intent(in) :: iname
          integer :: nextra
          if(iname=='lsoda') then
             r%iflag=0

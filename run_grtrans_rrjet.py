@@ -7,6 +7,7 @@
 from __future__ import division
 from __future__ import print_function
 import numpy as np
+import argparse
 import grtrans_batch as gr
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
@@ -15,33 +16,34 @@ import astropy.io.fits as fits
 import scipy.ndimage.interpolation as interpolation
 from scipy.interpolate import interp1d
 
-
 # Run parameters
 FIND_BSCL = True
-RUN_IMAGE = False      # run image
-RUN_SPECTRUM = True  # run spectrum 
+RUN_IMAGE = True      # run image
+RUN_SPECTRUM = True   # run spectrum 
 RERUN = True          # rerun 
 SAVEOUT = True        # save output images
 DISPLAYOUT = True     # display output image(s)
 
 # RRJET parameters -- these can be changed in function args below
+BETAECONST = 1.e-2      # constant bete0
+FPOSITRON = 1           # 0 < npositron/nelectron < 1
+
 PEGASRATIO = -1 #0.1    # ratio of electron to gas pressure (-1 to not use this model)
                         # THIS WILL OVERWRITE THE OTHER MODELS IF NOT EQUAL TO -1 
-
-BETAECONST = 1.e-2      # constant bete0
 BETAECRIT = -1          # critical beta for exponential supression (-1 uses constant betae)
 XIMAX = 10.             # maximum xi=s^2/z defining jet edge
-#BSCL = 1.e4            # magnetic field scale -- horizon flux = bscl * rg^2 - Richard original
-BSCL = 860.             # should correspond to field at horizon~20 Gauss, PBZ~6x10^42 erg/s for a=.5
-BSCLMIN= 1.             # bscl for search
-BSCLMAX=10000. 
-FLUX = 1.5              # desired flux in Jy
-
-#PSCL = (BSCL**2)/(8*np.pi)   # pressure scale -- this is fixed below
 GAMMAMIN = 10           # minimum gamma for power law distribution
-GAMMAMAX = 5.e3           # maximum gamma for power law distribution
+GAMMAMAX = 5.e3         # maximum gamma for power law distribution
 PNTH =  3.1             # nonthermal power law index
-FPOSITRON = 1           # 0 < npositron/nelectron < 1
+BSCL = 860.             # sets field at horizon
+BSCLMIN= 1.             # bscl for search
+BSCLMAX=100000. 
+
+# Source parameters
+SOURCE = 'M87'          # source for fits header
+RA = 12.51373           # ra for fits header
+DEC = 12.39112          # dec for fits header
+MJD =  58211            # mjd for fits header
 
 # Blackhole parameters
 MBH = 6.5e9    # bh mass / Msun
@@ -51,9 +53,10 @@ ANG = 160.      # polar angle (degrees)
 ROTANG = 117   # rotation angle in sky plane (degrees)
 
 # Raytrace parameters - image
-
-RFGHZ = 230.       # Frequency in Ghz
-FOV = 120.         # FOV / Rg
+# TODO -- multiple frequencies? 
+FLUX = 1.5          # desired flux in Jy
+RFGHZ = 230.        # Frequency in Ghz
+FOV = 120.          # FOV / Rg
 NPIX = 128          # number of pixels
 NGEO = 1000         # number of geodesic points
 
@@ -65,17 +68,10 @@ FMIN = 1.e9        # minimum freq in spectrum
 FMAX = 1.e16       # maximum freq in spectrum 
 
 DEPTH = 5 # raytracing outer volume is DEPTH*FOV/2 in Rg
-           # might want to be large for nearly face on jet, but slower
+          # might want to be large for nearly face on jet, but slower
 
-# Output File names
+# Output File Location
 OUTDIR = '../rrjet_and_riaf'                            # output directory
-OUTNAME =  ('rrjet_%0.1f'%FPOSITRON) + '_im'            # output f3.68364193E-11ile name - fits
-oname = 'rrjet'                                         # output file name - grtrans internal
-fname = OUTDIR + '/' + OUTNAME
-SOURCE = 'M87'                                          # source for fits header
-RA = 12.51373                                           # ra for fits header
-DEC = 12.39112                                          # dec for fits header
-MJD =  58211                                            # mjd for fits header
 
 # Constants
 mu = np.cos(ANG*np.pi/180.)
@@ -103,7 +99,7 @@ yticks_maj = [1.e39,1.e40,1.e41,1.e42]
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-def run_grtrans_image(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
+def run_grtrans_image(fname, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
                       betaeconst=BETAECONST,betaecrit=BETAECRIT,
                       bscl=BSCL,gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH):
     """ run grtrans single image"""
@@ -117,11 +113,12 @@ def run_grtrans_image(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
     pscl = (bscl**2)/(8*np.pi) 
 
     epcoefindx=[1,1,1,1,1,1,1]
+
     # TO TURN OFF FARADAY CONVERSTION
     #epcoefindx=[1,1,1,1,0,1,1]
 
     x=gr.grtrans()
-    x.write_grtrans_inputs(oname+'_im.in', oname=oname+'_im.out',
+    x.write_grtrans_inputs(fname+'_im.in', oname=fname+'_im.out',
                            fname='RRJET', phi0=0., pegasratio=pegasratio,
                            betaeconst=betaeconst, betaecrit=betaecrit, 
                            ximax=XIMAX, bscl=bscl, pscl=pscl,
@@ -180,7 +177,7 @@ def run_grtrans_image(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
 
     # save image
     if SAVEOUT:
-        save_im_fits(imdata, fname + '.fits', freq_ghz=RFGHZ)
+        save_im_fits(imdata, fname + ('%.0f.fits'%RFGHZ), freq_ghz=RFGHZ)
 
     # display images
     if DISPLAYOUT:
@@ -192,13 +189,12 @@ def run_grtrans_image(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
         display_grtrans_image(imdata, tmax=tmax, pmax=pmax)
 
 
-def findbscl(flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
+def findbscl(fname, flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
              betaeconst=BETAECONST,betaecrit=BETAECRIT,
              gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH):
     """ run grtrans single image to find the bscl that gives the correct flux with bisection, 
         for all other parameters fixed """
 
-    print('FPOSITRON', fpositron)
     # convergance parameters
     bedge_stop = 1
     fluxconvratio = .05
@@ -217,7 +213,6 @@ def findbscl(flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
 
         # bscl by bisection
         bscl = (bsclmax+bsclmin)/2.
-        print("min/max/mid %.2f %.2f %.2f" %(bsclmin,bsclmax,bscl))
 
         if bsclmax0-bscl < bedge_stop:
             print("did not find solution -- to close to bsclmax!")
@@ -229,7 +224,7 @@ def findbscl(flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
         # pressure scale is fixed!
         pscl = (bscl**2)/(8*np.pi) 
         x=gr.grtrans()
-        x.write_grtrans_inputs(oname+'_SEARCH.in', oname=oname+'_SEARCH.out',
+        x.write_grtrans_inputs(fname+'_SEARCH.in', oname=fname+'_SEARCH.out',
                                fname='RRJET', phi0=0., pegasratio=pegasratio,
                                betaeconst=betaeconst, betaecrit=betaecrit, 
                                ximax=XIMAX, bscl=bscl, pscl=pscl,
@@ -246,7 +241,6 @@ def findbscl(flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
                                nn=[npix_search,npix_search,NGEO],
                                hindf=1,hnt=1,
                                muval=1.)
-        print()
         # run grtrans
         x.run_grtrans()
 
@@ -289,7 +283,7 @@ def findbscl(flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
 
     return bscl
 
-def run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
+def run_grtrans_spectrum(fname, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
                          betaeconst=BETAECONST,betaecrit=BETAECRIT,
                          bscl=BSCL,gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH):
     """Run grtrans spectrum"""
@@ -307,7 +301,7 @@ def run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
     pscl = (bscl**2)/(8*np.pi) 
 
     x=gr.grtrans()
-    x.write_grtrans_inputs(oname+'_spec.in', oname=oname+'_spec.out',
+    x.write_grtrans_inputs(fname+'_spec.in', oname=fname+'_spec.out',
                            fname='RRJET', phi0=0., pegasratio=pegasratio,
                            betaeconst=betaeconst, betaecrit=betaecrit, 
                            ximax=XIMAX, bscl=bscl, pscl=pscl,
@@ -334,10 +328,27 @@ def run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
     x.calc_freqs(NFREQ)
     x.convert_to_lum()
     spec = x.spec[0][0:NFREQ]
+    qspec = x.spec[1][0:NFREQ]
+    uspec = x.spec[2][0:NFREQ]
+    vspec = x.spec[3][0:NFREQ]
     if npix_x==1 or npix_y==1:
         spec *= 0.5  # divide by 2 because we have +/- r in the strip
- 
+        qspec *= 0.5
+        uspec *= 0.5
+        vspec *= 0.5
     freqs = x.freqs
+
+    # save spectrum
+    if SAVEOUT:
+        outdat = np.vstack([freqs,spec,qspec,uspec,vspec]).T
+        np.savetxt(fname + '_spec.txt', outdat)
+
+    # display spectrum
+    if DISPLAYOUT:
+        plot_grtrans_spectrum(freqs, spec, qspec, uspec, vspec)
+
+
+def plot_grtrans_spectrum(freqs, spec, qspec, uspec, vspec):
 
     # plot Stokes I spectrum -- nu*Lnu
     f=plt.figure(111,figsize=(16,16))
@@ -358,16 +369,16 @@ def run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
     #linestyles=['solid','dashdot','dashed']
     ls = 'solid'
 
-    spec_interp = interp1d(np.log10(freqs), np.log10(spec), kind=3)
+    spec_interp = interp1d(np.log10(freqs), np.log10(spec), kind=2)
     logfreqs_plot = np.linspace(np.log10(FMIN), np.log10(FMAX), 500)
     logspec_plot = spec_interp(logfreqs_plot)
 
-    #plt.plot(freqs, freqs*spec, 'k-', linewidth=2, label=r'I, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
     plt.plot(10**logfreqs_plot, 10**(logfreqs_plot+logspec_plot), 'k-',
              linewidth=2, label=r'I, $f_p=%.1f$'%FPOSITRON, linestyle=ls)
 
     plt.legend()
 
+    #########################
     # plot Stokes I spectrum -- Fnu
     f=plt.figure(222,figsize=(16,16))
     plt.clf()
@@ -387,8 +398,8 @@ def run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
     #linestyles=['solid','dashdot','dashed']
     ls = 'solid'
 
-    spec = x.spec[0][0:NFREQ]*LumtoJy
-    spec_interp = interp1d(np.log10(freqs), np.log10(spec), kind=3)
+    spec *= LumtoJy
+    spec_interp = interp1d(np.log10(freqs), np.log10(spec), kind=2)
     logfreqs_plot = np.linspace(np.log10(FMIN), np.log10(FMAX), 500)
     logspec_plot = spec_interp(logfreqs_plot)
 
@@ -747,24 +758,55 @@ def ticks(axisdim, psize, nticks=8):
 
 
 if __name__=='__main__':
-    plt.close('all')
 
-    if FIND_BSCL:
-        bscl = findbscl(FLUX, BSCLMIN, BSCLMAX,
-                        fpositron=FPOSITRON,pegasratio=PEGASRATIO,
-                        betaeconst=BETAECONST,betaecrit=BETAECRIT,
+    # parse parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--betaeconst', type=float,default=BETAECONST)
+    parser.add_argument('--fpositron',type=float,default=FPOSITRON)
+    args = parser.parse_args()
+    fpos = args.fpositron
+    beconst = args.betaeconst
+
+    print('betaeconst: %.2e fpositron: %.2f' % (beconst, fpos))
+
+    # preliminaries for display/save output
+    if DISPLAYOUT:
+        plt.close('all')
+
+    if SAVEOUT: 
+        modeltag = 'betae%0.1e_fpos%.1f' % (beconst, fpos)
+        fdir = OUTDIR + '/' + modeltag
+        if not os.path.exists(fdir):
+            os.mkdir(fdir)
+        fname = fdir + '/' + modeltag
+    else: 
+        fname = OUTDIR + '/rrjet_tmp'
+
+    # find the bscale factor
+    if FIND_BSCL and RERUN:
+        bscl = findbscl(fname, FLUX, BSCLMIN, BSCLMAX,
+                        fpositron=fpos, betaeconst=beconst,
+                        pegasratio=PEGASRATIO, betaecrit=BETAECRIT,
                         gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH)
     else:
         bscl=BSCL
 
+    if SAVEOUT: 
+        np.savetxt(fname + '_bscl.txt', np.array([bscl]))
+   
+    # run the image
+    # TODO -- multiple frequencies? 
     if RUN_IMAGE:
-        run_grtrans_image(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
-                          betaeconst=BETAECONST,betaecrit=BETAECRIT,
+        run_grtrans_image(fname, fpositron=fpos, betaeconst=beconst,
+                          pegasratio=PEGASRATIO, betaecrit=BETAECRIT,
                           bscl=bscl,gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH)
+
+    # run the spectrum    
     if RUN_SPECTRUM:
-        run_grtrans_spectrum(fpositron=FPOSITRON,pegasratio=PEGASRATIO,
-                             betaeconst=BETAECONST,betaecrit=BETAECRIT,
+        run_grtrans_spectrum(fname, fpositron=fpos, betaeconst=beconst,
+                             pegasratio=PEGASRATIO, betaecrit=BETAECRIT,
                              bscl=bscl,gmin=GAMMAMIN,gmax=GAMMAMAX,pnth=PNTH)
+
     print('BSCL', bscl)
     if DISPLAYOUT:
         plt.show()

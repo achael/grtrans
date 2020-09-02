@@ -15,8 +15,7 @@
        use chandra_tab24, only: load_chandra_tab24, del_chandra_tab24
 
        implicit none
-       character(len=300), intent(in) :: outfile,ifile
-!       character(len=40) :: outfile,ifile
+       character(len=500), intent(in) :: outfile,ifile
        integer :: nextra=0, inum, gunit, i, indx, ncams, j, m, l, nparams, &
             nthreads, threadnum, iii
        real (kind=8) :: wtime
@@ -26,7 +25,7 @@
        type (fluid_args) :: fargs
        type (source_params), dimension(:), allocatable :: sparams
        type (emis_params) :: eparams
-       character(len=20), dimension(3) :: knames,kdescs
+       character(len=500), dimension(3) :: knames,kdescs
        knames(1)='nx'; knames(2)='ny'; kdescs(1)='# x pixels'
        kdescs(2)='# y pixels'
        knames(3)='nu'; kdescs(3)='Frequency (Hz)'

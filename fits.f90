@@ -53,13 +53,13 @@
          integer, intent(in) :: unit, dec
          integer, intent(inout) :: status
          real, intent(in) :: kval
-         character(len=20), intent(in) :: kname,kdesc
+         character(len=500), intent(in) :: kname,kdesc
          end subroutine ftpkye
          subroutine ftpkyd(unit,kname,kval,dec,kdesc,status)
          integer, intent(in) :: unit, dec
          real(kind=8), intent(in) :: kval
          integer, intent(inout) :: status
-         character(len=20), intent(in) :: kname,kdesc
+         character(len=500), intent(in) :: kname,kdesc
          end subroutine ftpkyd
        end interface
 
@@ -95,7 +95,7 @@
        
          subroutine create_fits(unit,filename,status)
          integer, intent(in) :: unit
-         character(len=100), intent(in) :: filename
+         character(len=500), intent(in) :: filename
          integer, intent(out) :: status
          integer :: blocksize=1
          status=0
@@ -104,7 +104,7 @@
          end subroutine create_fits
 
          subroutine delete_fits(filename,status)
-         character(len=100), intent(in) :: filename
+         character(len=500), intent(in) :: filename
          integer, intent(inout) :: status
          integer :: unit
          call open_fits(unit,filename,1,status)
@@ -114,7 +114,7 @@
 
          subroutine open_fits(unit,filename,readwrite,status)
          integer, intent(in) :: unit, readwrite
-         character(len=100), intent(in) :: filename
+         character(len=500), intent(in) :: filename
          integer, intent(out) :: status
          integer :: blocksize=1
          status=0
@@ -247,7 +247,7 @@
          decimal,kdesc,status)
          integer, intent(in) :: unit,kval,decimal
          integer, intent(inout) :: status
-         character(len=20), intent(in) :: kname,kdesc
+         character(len=500), intent(in) :: kname,kdesc
          call ftpkyj(unit,kname,kval,kdesc,status)
          end subroutine write_fits_extra_keyword_int
 
@@ -255,7 +255,7 @@
          kdesc,status)
          integer, intent(in) :: unit,kval
          integer, intent(inout) :: status
-         character(len=20), intent(in) :: kname,kdesc
+         character(len=500), intent(in) :: kname,kdesc
          call ftpkyj(unit,kname,kval,kdesc,status)
          end subroutine aftpkyj
 
@@ -264,16 +264,16 @@
          integer, intent(in) :: unit,decimal
          real(kind=8), intent(in) :: kval
          integer, intent(inout) :: status
-         character(len=20), intent(in) :: kname,kdesc
+         character(len=500), intent(in) :: kname,kdesc
          call ftpkyd(unit,kname,kval,decimal,kdesc,status)
          end subroutine aftpkyd
 
          subroutine aftpkys(unit,kname,kval, &
          kdesc,status)
          integer, intent(in) :: unit
-         character(len=20), intent(in) :: kval
+         character(len=500), intent(in) :: kval
          integer, intent(inout) :: status
-         character(len=20), intent(in) :: kname,kdesc
+         character(len=500), intent(in) :: kname,kdesc
          call ftpkys(unit,kname,kval,kdesc,status)
          end subroutine aftpkys
 

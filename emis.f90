@@ -290,7 +290,7 @@
        
          subroutine select_emissivity_values(e,ename)
          type (emis), intent(out) :: e
-         character(len=100), intent(in) :: ename
+         character(len=500), intent(in) :: ename
          !write(6,*) 'ename:', ename
 
          if(ename=='POLSYNCHTH') then

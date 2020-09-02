@@ -14,7 +14,7 @@
       namelist /harm/  dfile, hfile, nt, indf
 
       logical :: doingkoralnth,shortfile
-      character(len=100) :: dfile, hfile
+      character(len=500) :: dfile, hfile
       integer :: nx1, nx2, nx3,n, ndumps, nt, indf, dlen, nhead
       integer :: nrelbin=0
       integer :: ndim=3
@@ -355,7 +355,7 @@
         ! Read inputs from file
         !AC koral will share the harm input file structure for now 
         subroutine read_koral3d_inputs(ifile)
-        character(len=20), intent(in) :: ifile
+        character(len=500), intent(in) :: ifile
         open(unit=8,file=ifile,form='formatted',status='old')
         read(8,nml=harm) 
         write(6,*) 'read: ',nt
@@ -402,7 +402,7 @@
         !Read text files with  data values
         !AC TODO can we read binary data files instead???
         subroutine read_koral3d_data_file(data_file,tcur,rho,p,u,b,Be,nnth)
-        character(len=100), intent(in) :: data_file
+        character(len=500), intent(in) :: data_file
         integer :: nhead, nhead2, dlen
         integer :: rhopos,ppos,Bepos,vpos,bpos,gdetpos,gridpos,nthpos
         real(8), intent(out) :: tcur
@@ -526,9 +526,9 @@
         integer :: nx, status, nhead
         logical, intent(in) :: doingnth
         real(8),intent(in),optional :: sfac
-        character(len=20), intent(in), optional :: ifile
-        character(len=20) :: default_ifile='koral.in' !AC
-        character(len=100), intent(in), optional :: df,hf
+        character(len=500), intent(in), optional :: ifile
+        character(len=500) :: default_ifile='koral.in' !AC
+        character(len=500), intent(in), optional :: df,hf
         integer, intent(in), optional :: ntt,indft
         nhead=11
 
@@ -577,8 +577,8 @@
         real, dimension(:), allocatable :: vrl, vtl, vpl
         type (four_vector), dimension(:), allocatable :: u, b
         integer, intent(in) :: nt
-        character(len=250) :: append
-        character(len=100) :: data_file
+        character(len=500) :: append
+        character(len=500) :: data_file
         integer :: k
         real(8) :: tcur, tstep_test
 
