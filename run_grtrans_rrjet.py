@@ -22,7 +22,7 @@ RUN_IMAGE = True      # run image
 RUN_SPECTRUM = True   # run spectrum 
 RERUN = True          # rerun 
 SAVEOUT = True        # save output images
-DISPLAYOUT = True     # display output image(s)
+DISPLAYOUT = False     # display output image(s)
 
 # RRJET parameters -- these can be changed in function args below
 BETAECONST = 1.e-2      # constant bete0
@@ -88,7 +88,7 @@ LumFac = (4 * np.pi * cmperrg**2)
 LumtoJy = 1.e23/(4*np.pi*bhdist**2)
 
 # Plotting parameters
-M87DIR =   './M87_data' # directory with Sgr A* data files
+M87DIR =   './M87_data' # directory with M87 data files
 NEWDATA = False         # Use new m87 SED from 2017 (LOWER TOTAL FLUX)
 cfun = 'afmhot'
 cfun2 =  'Spectral'
@@ -107,19 +107,19 @@ def run_grtrans_image(fname, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
     print("Run image, bscl=%.2f"%bscl)
 
     size  = 0.5*FOV         
-    uout = 1./(10.*size)
+    uout = 1./(DEPTH*size)
 
     # pressure scale is fixed!
     pscl = (bscl**2)/(8*np.pi) 
 
-    epcoefindx=[1,1,1,1,1,1,1]
-
     # TO TURN OFF FARADAY CONVERSTION
+    epcoefindx=[1,1,1,1,1,1,1]
     #epcoefindx=[1,1,1,1,0,1,1]
 
     x=gr.grtrans()
     x.write_grtrans_inputs(fname+'_im.in', oname=fname+'_im.out',
-                           fname='RRJET', phi0=0., pegasratio=pegasratio,
+                           fname='RRJET', phi0=0., 
+                           pegasratio=pegasratio,
                            betaeconst=betaeconst, betaecrit=betaecrit, 
                            ximax=XIMAX, bscl=bscl, pscl=pscl,
                            nfreq=1,fmin=RFGHZ*1.e9,fmax=RFGHZ*1.e9,
@@ -177,7 +177,7 @@ def run_grtrans_image(fname, fpositron=FPOSITRON,pegasratio=PEGASRATIO,
 
     # save image
     if SAVEOUT:
-        save_im_fits(imdata, fname + ('%.0f.fits'%RFGHZ), freq_ghz=RFGHZ)
+        save_im_fits(imdata, fname + ('_%.0f.fits'%RFGHZ), freq_ghz=RFGHZ)
 
     # display images
     if DISPLAYOUT:
@@ -205,7 +205,7 @@ def findbscl(fname, flux, bsclmin, bsclmax, fpositron=FPOSITRON,pegasratio=PEGAS
     npix_search = int(NPIX/2)
     
     size  = 0.5*fov_search         
-    uout = 1./(10.*size)
+    uout = 1./(DEPTH*size)
 
     bsclmin0 = bsclmin
     bsclmax0 = bsclmax

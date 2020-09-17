@@ -6,6 +6,7 @@
 from __future__ import division
 from __future__ import print_function
 import numpy as np
+import argparse
 import grtrans_batch as gr
 import matplotlib.pyplot as plt
 import scipy.ndimage.filters as filt
@@ -14,33 +15,36 @@ import astropy.io.fits as fits
 import scipy.ndimage.interpolation as interpolation
 from scipy.interpolate import interp1d
 
-RERUN = True      # rerun or  not
-
 # Run parameters
 FIND_NSCL = True
 RUN_IMAGE = True    # run image
 RUN_SPECTRUM = True # run spectrum 
-
+RERUN = True          # rerun 
+SAVEOUT = True        # save output images
+DISPLAYOUT = False     # display output image(s)
 SAVEOUT = True    # save output images
 DISPLAYOUT = True # display output image(s)
 
-# Broderick&Loeb 06 parameters
+# Broderick & Loeb 06/09 parameters
+BLO6 = 0                # Use Broderick 06 conventions (1) or Broderick 09 conventions (0)
 TSCL = 1.5e11           # scaling factor for electron temperature
 BETA = 10.              # plasma beta
 NTHFRAC = .01           # fraction of nonthermal electrons
-#NNTHSCL = 1.e5         # scaling factor for nonthermal electron number density
 GAMMAMIN = 100          # minimum gamma for power law distribution
 GAMMAMAX = 1.e6         # maximum gamma for power law distribution         
 PNTH = 3.5              # nonthermal power law index
 FPOSITRON=0             # 0 < npositron/nelectron < 1
+NTH_RADIAL_PLAW = 2.02  # radial power law for nonthermal electrons (fixed to -2.02 in BL11)
 
 NSCL = 1.0e7            # scaling factor for thermal electron number density
 NSCLMIN= 1.e5           # nscl for search
 NSCLMAX=1.e10 
-FLUX = 3.1              # desired flux in Jy
 
-BLO6 = 0                # Use Broderick 06 conventions (1) or Broderick 09 conventions (0)
-NTH_RADIAL_PLAW = 2.02  # radial power law for nonthermal electrons (fixed to -2.02 in BL11)
+# Source parameters
+SOURCE = 'SGRA'                                         # source for fits header
+RA = 17.761122                                          # ra for fits header
+DEC = -20.007                                           # dec for fits header
+MJD =  58211                                            # mjd for fits header
 
 # Blackhole parameters
 MBH = 4.1e6  # bh mass / Msun
@@ -50,27 +54,23 @@ ANG = 60.    # polar angle (degrees)
 ROTANG = 156 # rotation angle in sky plane (degrees)
 
 # Raytrace parameters - image
+FLUX = 3.1          # desired flux in Jy
 RFGHZ = 230.        # Frequency in Ghz
 FOV = 50.           # FOV / Rg
-NPIX = 64           # number of pixels
+NPIX = 64          # number of pixels
 NGEO = 500          # number of geodesic points
 
 # Raytrace parameters - spectrum
-NFREQ = 10          # number of frequencies
-FOV_SPEC = 50 #100      # FOV / Rg
-NPIX_SPEC = 64      # number of pixels in spectrum image
+NFREQ = 20          # number of frequencies
+FOV_SPEC = FOV      # FOV / Rg
+NPIX_SPEC = NPIX    # number of pixels in spectrum image
 FMIN = 1.e9         # minimum freq in spectrum
 FMAX = 1.e14        # maximum freq in spectrum 
 
+DEPTH = 5 # raytracing outer volume is DEPTH*FOV/2 in Rg
+
 # Output File names
 OUTDIR = '../rrjet_and_riaf'                            # output directory
-OUTNAME =  ('riaf_%0.1f_'%FPOSITRON) + str(ANG) + '_im' # output file name - fits
-oname = 'riaf'                                          # output file name - grtrans internal
-fname = OUTDIR + '/' + OUTNAME
-SOURCE = 'SGRA'                                         # source for fits header
-RA = 17.761122                                          # ra for fits header
-DEC = -20.007                                           # dec for fits header
-MJD =  58211                                            # mjd for fits header
 
 # Constants
 mu = np.cos(ANG*np.pi/180.)
@@ -99,19 +99,25 @@ yticks_maj = [1.e30,1.e32,1.e34,1.e36]
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-def run_grtrans_image(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+def run_grtrans_image(fname, nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
                       nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX):
     """ run grtrans single image"""
 
 
     size  = 0.5*FOV         
-    uout = 1./(2.*size)
+    uout = 1./(DEPTH*size)
+
+
+
+    # nonthermal number density
+    nthscl = nthfrac*nscl 
+
+    # TO TURN OFF FARADAY CONVERSTION
+    epcoefindx=[1,1,1,1,1,1,1]
+    #epcoefindx=[1,1,1,1,0,1,1]
 
     x=gr.grtrans()
-
-    nthscl = nthfrac*nscl # nonthermal number density
-
-    x.write_grtrans_inputs(oname+'_im.in', oname=oname+'_im.out',
+    x.write_grtrans_inputs(fname+'_im.in', oname=fname+'_im.out',
                            fname='SARIAF', phi0=0.,
                            nfreq=1,fmin=RFGHZ*1.e9,fmax=RFGHZ*1.e9,
                            snscl=nscl, ntscl=tscl, snnthscl=nthscl, sbeta=beta,
@@ -119,6 +125,7 @@ def run_grtrans_image(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
                            fpositron=fpositron,
                            snnthp=NTH_RADIAL_PLAW, sbl06=BLO6,
                            ename='HYBRIDTHPL',
+                           epcoefindx=epcoefindx,
                            nvals=4,
                            spin=A, standard=1,
                            uout=uout,
@@ -162,7 +169,7 @@ def run_grtrans_image(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
 
     # save image
     if SAVEOUT:
-        save_im_fits(imdata, fname + '.fits', freq_ghz=RFGHZ)
+        save_im_fits(imdata, fname + ('%.0f.fits'%RFGHZ), freq_ghz=RFGHZ)
 
     # display images
     if DISPLAYOUT:
@@ -174,13 +181,13 @@ def run_grtrans_image(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
         display_grtrans_image(imdata, tmax=tmax, pmax=pmax)
 
 
-def findnscl(flux, nsclmin, nsclmax, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+def findnscl(fname, flux, nsclmin, nsclmax, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
              nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX):
-
     """ run grtrans single image to find the nscl that gives the correct flux with bisection, 
         for all other parameters fixed """
 
-    print('FPOSITRON', fpositron)
+    #print('FPOSITRON', fpositron)
+
     # convergance parameters
     bedge_stop = 1
     fluxconvratio = .05
@@ -191,7 +198,7 @@ def findnscl(flux, nsclmin, nsclmax, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
     npix_search = int(NPIX/2)
     
     size  = 0.5*fov_search         
-    uout = 1./(10.*size)
+    uout = 1./(DEPTH*size)
 
     nsclmin0 = nsclmin
     nsclmax0 = nsclmax
@@ -211,7 +218,7 @@ def findnscl(flux, nsclmin, nsclmax, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
         # pressure scale is fixed!
         nthscl = nthfrac*nscl # nonthermal number density
         x=gr.grtrans()
-        x.write_grtrans_inputs(oname+'_SEARCH.in', oname=oname+'_SEARCH.out',
+        x.write_grtrans_inputs(fname+'_SEARCH.in', oname=fname+'_SEARCH.out',
                                fname='SARIAF', phi0=0.,
                                nfreq=1,fmin=RFGHZ*1.e9,fmax=RFGHZ*1.e9,
                                snscl=nscl, ntscl=tscl, snnthscl=nthscl, sbeta=beta,
@@ -219,7 +226,7 @@ def findnscl(flux, nsclmin, nsclmax, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
                                fpositron=fpositron,
                                snnthp=NTH_RADIAL_PLAW, sbl06=BLO6,
                                ename='HYBRIDTHPL',
-                               nvals=4,
+                               nvals=1,
                                spin=A, standard=1,
                                uout=uout,
                                mbh=MBH,
@@ -271,16 +278,12 @@ def findnscl(flux, nsclmin, nsclmax, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
 
     return nscl
 
-def run_grtrans_spectrum(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+def run_grtrans_spectrum(fname, nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
                          nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX):
     """Run grtrans spectrum"""
 
-    # TODO fix
-    #NPIX_SPEC = 501
-    #size_spec = 500
-
     size_spec  = 0.5*FOV_SPEC      
-    uout_spec = 1./(2*size_spec)
+    uout_spec = 1./(DEPTH*size_spec)
 
     npix_x = NPIX_SPEC
     npix_y = NPIX_SPEC
@@ -288,9 +291,9 @@ def run_grtrans_spectrum(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
     size_x = size_spec
     size_y = size_spec
 
-    x=gr.grtrans()
     nthscl = nthfrac*nscl # nonthermal number density
-    x.write_grtrans_inputs(oname+'_spec.in', oname=oname+'_spec.out',
+    x=gr.grtrans()
+    x.write_grtrans_inputs(fname+'_spec.in', oname=fname+'_spec.out',
                            fname='SARIAF', phi0=0.,
                            #nfreq=2,fmin=200.e9,fmax=230.e9,
                            nfreq=NFREQ,fmin=FMIN,fmax=FMAX,
@@ -299,7 +302,7 @@ def run_grtrans_spectrum(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
                            fpositron=fpositron,
                            snnthp=NTH_RADIAL_PLAW, sbl06=BLO6,
                            ename='HYBRIDTHPL',
-                           nvals=1,
+                           nvals=4,
                            spin=A, standard=1,
                            uout=uout_spec,
                            mbh=MBH,
@@ -320,10 +323,26 @@ def run_grtrans_spectrum(nscl=NSCL, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
     x.calc_freqs(NFREQ)
     x.convert_to_lum()
     spec = x.spec[0][0:NFREQ]
+    qspec = x.spec[1][0:NFREQ]
+    uspec = x.spec[2][0:NFREQ]
+    vspec = x.spec[3][0:NFREQ]
     if npix_x==1 or npix_y==1:
         spec *= 0.5  # divide by 2 because we have +/- r in the strip
- 
+        qspec *= 0.5
+        uspec *= 0.5
+        vspec *= 0.5
     freqs = x.freqs
+
+    # save spectrum
+    if SAVEOUT:
+        outdat = np.vstack([freqs,spec,qspec,uspec,vspec]).T
+        np.savetxt(fname + '_spec.txt', outdat)
+
+    # display spectrum
+    if DISPLAYOUT:
+        plot_grtrans_spectrum(freqs, spec, qspec, uspec, vspec)
+
+def plot_grtrans_spectrum(freqs, spec, qspec, uspec, vspec):
 
     # plot Stokes I spectrum -- nu*Lnu
     f=plt.figure(111,figsize=(16,16))
@@ -792,19 +811,51 @@ def plot_sgra_data_Jy(ax):
     return ax
 
 if __name__=='__main__':
-    plt.close('all')
+    # parse parameters
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--tscl',type=float,default=TSCL)
+    parser.add_argument('--beta', type=float,default=BETA)
+    parser.add_argument('--nthfrac', type=float,default=NTHFRAC)
+    parser.add_argument('--fpositron',type=float,default=FPOSITRON)
+    args = parser.parse_args()
+
+    fpos = args.fpositron
+    tscl = args.tscl
+    beta = args.beta
+    nthfrac = args.nthfrac
+
+    print('tscl: %.2e beta: %.2f nthfrac: %.2f fpositron: %.2f' % (tscl, beta, nthfrac, fpos))
+
+
+    # preliminaries for display/save output
+    if DISPLAYOUT:
+        plt.close('all')
+
+    if SAVEOUT: 
+        modeltag = 'tscl%0.1e_beta%0.1e_nth%0.1e_fpos%.1f' % (tscl, beta, nthfrac, fpos)
+        fdir = OUTDIR + '/' + modeltag
+        if not os.path.exists(fdir):
+            os.mkdir(fdir)
+        fname = fdir + '/' + modeltag
+    else: 
+        fname = OUTDIR + '/riaf_tmp'
+
+
     if FIND_NSCL and RERUN:
-        nscl = findnscl(FLUX, NSCLMIN, NSCLMAX, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+        nscl = findnscl(fname, FLUX, NSCLMIN, NSCLMAX, tscl=TSCL, beta=BETA, 
+                        fpositron=FPOSITRON,
                         nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX)
     else:
         nscl = NSCL
+    if SAVEOUT: 
+        np.savetxt(fname + '_nscl.txt', np.array([nscl]))
 
     if RUN_IMAGE:
-        run_grtrans_image(nscl=nscl, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+        run_grtrans_image(fname, nscl=nscl, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
                           nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX)
     if RUN_SPECTRUM:
-        run_grtrans_spectrum(nscl=nscl, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
-                       nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX)
+        run_grtrans_spectrum(fname, nscl=nscl, tscl=TSCL, beta=BETA, fpositron=FPOSITRON,
+                             nthfrac=NTHFRAC, pnth=PNTH, gmin=GAMMAMIN, gmax=GAMMAMAX)
     print('NSCL', nscl)
     if DISPLAYOUT:
         plt.show()
