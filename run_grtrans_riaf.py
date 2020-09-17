@@ -38,7 +38,7 @@ NTH_RADIAL_PLAW = 2.02  # radial power law for nonthermal electrons (fixed to -2
 
 NSCL = 1.0e7            # scaling factor for thermal electron number density
 NSCLMIN= 1.e5           # nscl for search
-NSCLMAX=1.e10 
+NSCLMAX=1.e9 
 
 # Source parameters
 SOURCE = 'SGRA'                                         # source for fits header
@@ -54,15 +54,15 @@ ANG = 60.    # polar angle (degrees)
 ROTANG = 156 # rotation angle in sky plane (degrees)
 
 # Raytrace parameters - image
-FLUX = 3.1          # desired flux in Jy
+FLUX = 3.5          # desired flux in Jy
 RFGHZ = 230.        # Frequency in Ghz
 FOV = 50.           # FOV / Rg
-NPIX = 64          # number of pixels
+NPIX = 64           # number of pixels
 NGEO = 500          # number of geodesic points
 
 # Raytrace parameters - spectrum
 NFREQ = 20          # number of frequencies
-FOV_SPEC = FOV      # FOV / Rg
+FOV_SPEC = 2*FOV      # FOV / Rg
 NPIX_SPEC = NPIX    # number of pixels in spectrum image
 FMIN = 1.e9         # minimum freq in spectrum
 FMAX = 1.e14        # maximum freq in spectrum 
@@ -383,8 +383,8 @@ def plot_grtrans_spectrum(freqs, spec, qspec, uspec, vspec):
     plt.yscale('log')
     plt.xlabel('$\\nu$ (Hz)', size=26)
     plt.ylabel('$F_{\\nu}$ (Jy)', size=26)
-    plt.xlim([1.e9,1.e16])
-    plt.ylim([1.e-5,10.])
+    #plt.xlim([1.e9,1.e16])
+    #plt.ylim([1.e-5,10.])
     plt.tick_params(axis='both',labelsize=22)
     plt.ion()
     ax = plot_sgra_data_Jy(ax)
@@ -392,7 +392,7 @@ def plot_grtrans_spectrum(freqs, spec, qspec, uspec, vspec):
     #linestyles=['solid','dashdot','dashed']
     ls = 'solid'
 
-    spec = x.spec[0][0:NFREQ]*LumtoJy
+    spec *= LumtoJy    
     spec_interp = interp1d(np.log10(freqs), np.log10(spec), kind=3)
     logfreqs_plot = np.linspace(np.log10(FMIN), np.log10(FMAX), 500)
     logspec_plot = spec_interp(logfreqs_plot)
