@@ -37,8 +37,8 @@ module fluid_model
   use fluid_model_mb09, only: initialize_mb09_model, del_mb09_data, mb09_vals, &
        advance_mb09_timestep
   use calc_gmin, only: calc_gmin_subroutine
-  implicit none
 
+  implicit none
 
   ! mnemonics for different nonthermal electron source models
   integer, parameter :: CONST=0,TAIL=1 
@@ -132,7 +132,7 @@ module fluid_model
     ! Assign fluid model arguments to fluid_args data type
     subroutine assign_fluid_args(fargs,dfile,hfile,gfile,sim,nt,indf,nfiles,jonfix, &
                                  nw,nfreq_tab,nr,offset,dindf,magcrit, &
-                                 rspot,r0spot, &n0spot,tscl,rscl, &
+                                 rspot,r0spot, n0spot,tscl,rscl, &
                                  wmin,wmax,fmin,fmax,rmax,sigt,fcol, &
                                  mdot,mbh,nscl,nnthscl,nnthp,beta,bl06,np,tp, &
                                  rin,rout,thin,thout,phiin,phiout,scalefac,sigcut, &
@@ -146,7 +146,6 @@ module fluid_model
                fmax,rmax,sigt,fcol,mdot,mbh,nscl,nnthscl,nnthp,beta,np,tp, &
                rin,rout,thin,thout,phiin,phiout,scalefac,sigcut,betaeconst,betaecrit,ximax,&
                bscl,pscl,pegasratio
-          write(6,*) 'in fluid args'
           fargs%dfile = dfile; fargs%hfile = hfile; fargs%gfile=gfile
           fargs%sim = sim; fargs%nt = nt; fargs%indf = indf; fargs%nfiles = nfiles
           fargs%jonfix = jonfix; fargs%nw = nw; fargs%nfreq_tab = nfreq_tab
@@ -174,16 +173,13 @@ module fluid_model
         type (fluid_args) :: fargs
 
         if(fname=='COSMOS') then
-            write(6,*) 'COSMOS fluid model removed!
-            exit
+            write(6,*) 'COSMOS fluid model removed!'
 !           call init_cosmos(a,fargs)
         elseif(fname=='MB') then
-            write(6,*) 'MB fluid model removed!
-            exit
+            write(6,*) 'MB fluid model removed!'
 !           call initialize_mb_model(a)
         elseif(fname=='RIAF') then
-            write(6,*) 'RIAF fluid model removed! try SARIAF
-            exit
+            write(6,*) 'RIAF fluid model removed! try SARIAF'
 !           call init_riaf(a)
         elseif(fname=='SARIAF') then
             call init_sariaf(real(fargs%nscl),real(fargs%tscl),real(fargs%nnthscl), &
@@ -230,7 +226,7 @@ module fluid_model
             call initialize_koral3d_model(a,ifile,.false.,fargs%dfile,fargs%hfile,fargs%nt,fargs%indf, & 
                                           fargs%scalefac,nrelbin,bingammamin,bingammamax)
         elseif(fname=='KORALH5') then
-            call initialize_koralh5_model(a,ifile,fargs%dfile,fargs%hfile,fargs%nt,fargs%indf, fargs%scalefac)                      
+            call initialize_koralh5_model(a,ifile,fargs%dfile,fargs%hfile,fargs%nt,fargs%indf,fargs%scalefac)                      
         elseif(fname=='SPHACC') then
             call init_sphacc()
         elseif(fname=='FFJET') then
@@ -1270,7 +1266,7 @@ module fluid_model
         ! Moscibrodzka+2016 e- model with rlow = T_p / T_e from muval, rhigh = gmin*rlow
         ! reduces to T_p / T_e = const when gmin = 1 (should change input used for this)
         ! CHANGED TO USE MU INSTEAD OF TRAT to allow mu > 1/2 models to make sense 3/21/2017
-        call monika_e(f%rho,f%p,f%bmag,beta_trans,
+        call monika_e(f%rho,f%p,f%bmag,beta_trans, &
                       sp%muval,sp%muval/sp%gminval,trat)
         tempcgs = tempcgs*trat
         ncgsnth=ncgs
@@ -1592,61 +1588,61 @@ module fluid_model
     ! source param routines (for nonthermal: constant or tail) 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
     subroutine assign_source_params_type(sp,type)
-          character(len=500), intent(in) :: type
-          type (source_params), intent(inout) :: sp
-          if(type=='const') then
-             sp%type=CONST
-          elseif(type=='tail') then
-             sp%type=TAIL
-          else
-             write(6,*) 'ERROR in assign_source_params_type: type not recognized', type
-          endif
+        character(len=500), intent(in) :: type
+        type (source_params), intent(inout) :: sp
+        if(type=='const') then
+         sp%type=CONST
+        elseif(type=='tail') then
+         sp%type=TAIL
+        else
+         write(6,*) 'ERROR in assign_source_params_type: type not recognized', type
+        endif
     end subroutine assign_source_params_type
 
     subroutine initialize_source_params(sp,nup)
-          type (source_params), intent(inout) :: sp
-          integer, intent(in) :: nup
-          allocate(sp%gmin(nup))
-          allocate(sp%jetalpha(nup))
-          allocate(sp%mu(nup))
+        type (source_params), intent(inout) :: sp
+        integer, intent(in) :: nup
+        allocate(sp%gmin(nup))
+        allocate(sp%jetalpha(nup))
+        allocate(sp%mu(nup))
     end subroutine initialize_source_params
 
     subroutine del_source_params(sp)
-          type (source_params), intent(inout) :: sp
-          deallocate(sp%gmin)
-          deallocate(sp%jetalpha)
-          deallocate(sp%mu)
+        type (source_params), intent(inout) :: sp
+        deallocate(sp%gmin)
+        deallocate(sp%jetalpha)
+        deallocate(sp%mu)
     end subroutine del_source_params
         
     subroutine assign_source_params(sp,ncgs,tcgs,ncgsnth)
-          type (source_params), intent(inout) :: sp
-          real(kind=8), dimension(:), intent(in) :: ncgs,tcgs
-          real(kind=8), dimension(:), intent(inout) :: ncgsnth
-          real(kind=8), dimension(size(ncgs)) :: x,one,gmin,gmax,zero,factor
-          zero=0d0
-          one=1d0
-          gmax=sp%gmax
+        type (source_params), intent(inout) :: sp
+        real(kind=8), dimension(:), intent(in) :: ncgs,tcgs
+        real(kind=8), dimension(:), intent(inout) :: ncgsnth
+        real(kind=8), dimension(size(ncgs)) :: x,one,gmin,gmax,zero,factor
+        zero=0d0
+        one=1d0
+        gmax=sp%gmax
 
-!          write(6,*) 'fluid assign source params: ',sp%type,CONST,TAIL
-          select case(sp%type)
-             case (CONST)
-                sp%gmin=sp%gminval
-                sp%jetalpha=sp%jetalphaval
-                sp%mu=sp%muval
-             case (TAIL)
-                sp%jetalpha=sp%jetalphaval
-                sp%mu=sp%muval
-                ! Fluid -> calc_gmin -> mu*tcgs -> emis means that calc_gmin is given a tcgs
-                ! pre-mu correction and needs to be corrected here.                 
-                call calc_gmin_subroutine(sp%p2,sp%mu*k*tcgs/m/c/c,sp%jetalpha,gmin,x)
-                sp%gmin=merge(gmin,gmax/2d0,gmin.le.gmax)
-                factor=merge(one,(gmax/2d0/gmin)**(sp%p2 - 2.),gmin.le.gmax)
+        !write(6,*) 'fluid assign source params: ',sp%type,CONST,TAIL
+        select case(sp%type)
+         case (CONST)
+            sp%gmin=sp%gminval
+            sp%jetalpha=sp%jetalphaval
+            sp%mu=sp%muval
+         case (TAIL)
+            sp%jetalpha=sp%jetalphaval
+            sp%mu=sp%muval
+            ! Fluid -> calc_gmin -> mu*tcgs -> emis means that calc_gmin is given a tcgs
+            ! pre-mu correction and needs to be corrected here.                 
+            call calc_gmin_subroutine(sp%p2,sp%mu*k*tcgs/m/c/c,sp%jetalpha,gmin,x)
+            sp%gmin=merge(gmin,gmax/2d0,gmin.le.gmax)
+            factor=merge(one,(gmax/2d0/gmin)**(sp%p2 - 2.),gmin.le.gmax)
 
-                !when gmin is corrected for being too large, multiply ncgsnth by a corrective factor.
-                !The correction (1-p) is already applied, so the correction p-2 is needed.
-                ncgsnth=factor * merge(x*ncgs*sp%gmin**(1.-sp%p2),zero,x.gt.0d0)
+            !when gmin is corrected for being too large, multiply ncgsnth by a corrective factor.
+            !The correction (1-p) is already applied, so the correction p-2 is needed.
+            ncgsnth=factor * merge(x*ncgs*sp%gmin**(1.-sp%p2),zero,x.gt.0d0)
 
-          end select
-        end subroutine assign_source_params
+        end select
+    end subroutine assign_source_params
 
 end module fluid_model

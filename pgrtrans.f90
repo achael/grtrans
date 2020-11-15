@@ -163,14 +163,14 @@
 !            gmin, gmax,p1, p2, jetalpha, stype,use_geokerr, nvals, iname,&
 !            cflag, extra, debug, outfile
 !            write(6,*) 'emis args: ',epotherargs,epcoefindx
-            write(6,*) 'call assign_fluid_args'
+!            write(6,*) 'call assign_fluid_args'
             call assign_fluid_args(fargs,fdfile,fhfile,fgfile,fsim,fnt, &
             findf,fnfiles, fjonfix, &
             fnw,fnfreq_tab,fnr,foffset,fdindf,fmagcrit,frspot,fr0spot,fn0spot,ftscl,frscl, &
             fwmin,fwmax,ffmin,ffmax,frmax,fsigt,ffcol,fmdot,mbh,fnscl,fnnthscl,fnnthp,fbeta, &
             fbl06,fnp,ftp,frin,frout,fthin,fthout,fphiin,fphiout, &
             fscalefac,sigcut,betaeconst,betaecrit,ximax,bscl,pscl,pegasratio)
-            write(6,*) 'load fluid model ',fname
+            write(6,*) 'load fluid model ',trim(fname)
             call load_fluid_model(fname,spin,fargs)
 
             if(nup.eq.1.and.nvals.eq.4) call load_chandra_tab24()

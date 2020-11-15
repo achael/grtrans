@@ -106,6 +106,7 @@ class grtrans_inputs:
         self.ifile='inputs.in'
         self.hhfile='dump040'
         self.hdfile='dump'
+        self.hgfile='dump0000rr2.bin'
         self.hnt=1
         self.hindf=40
         self.tdfile='fieldline'
@@ -127,6 +128,7 @@ class grtrans_inputs:
         self.msim='dipole'
         self.extra=0
         self.debug=0
+
 # fluid arguments
         self.fdfile='fieldline'
         self.fgfile='dump0000rr2.bin'
@@ -222,7 +224,7 @@ class grtrans_inputs:
         vals.extend(["'"+self.fname+"'",self.dt,self.nt,self.nload,self.nmdot,self.mdotmin,self.mdotmax,self.sigcut,self.betaeconst,self.betaecrit,self.ximax,self.bscl,self.pscl,self.pegasratio])
         vals.extend(["'"+self.ename+"'",self.mbh,self.nfreq,self.fmin,self.fmax,self.muval,self.gmin,self.gmax,self.p1,self.p2,self.fpositron,self.jetalpha,"'"+self.stype+"'",self.delta,self.nweights,cindxstr])
         vals.extend([self.use_geokerr,self.nvals,"'"+self.iname+"'",self.cflag])
-        print(self.fname)
+#        print(self.fname)
 
         
         # default values for fluid arguments that can change depending on model, work with thickdisk
@@ -230,11 +232,13 @@ class grtrans_inputs:
         self.fnt = self.tnt; self.fnfiles = self.tnfiles; self.findf = self.tindf
         self.fjonfix = self.tjonfix; self.foffset = self.toff; self.fsim = self.tsim
         self.fdindf = self.tdindf; self.fmagcrit = self.tmagcrit
+
+        # assign mb09 fluid arguments
         if self.fname=='MB09':
             namesmb09=['mb09']
             valsmb09=["'"+self.mgfile+"'","'"+self.mdfile+"'",self.mnt,self.mnfiles,self.mindf,self.mjonfix,self.msim]
             nargsmb09=[len(argsmb09)]
-        # assign mb09 fluid arguments
+
             self.fdfile = self.mdfile
             self.fgfile = self.mgfile
             self.fnt = self.mnt
@@ -243,54 +247,23 @@ class grtrans_inputs:
             self.fsim = self.msim
             self.fnfiles = self.mnfiles
 
-        if self.fname=='HARM':
+        # assign harm fluid arguments
+        if self.fname in ['HARM','KORAL','KORALNTH''KORAL3D','KORAL3D_DISK','KORAL3D_TOPJET','KORAL3D_BOTJET','KORALH5']:
             namesharm=['harm']
             valsharm=["'"+self.hdfile+"'","'"+self.hhfile+"'",self.hnt,self.hindf]
             nargsharm=[len(argsharm)]
-        # assign harm fluid arguments
-            self.fdfile = self.hdfile
-            self.fhfile = self.hhfile
-            self.fnt = self.hnt
-            self.findf = self.hindf
 
-        if self.fname=='KORAL':
-            nameskoral=['koral']
-            valskoral=["'"+self.hdfile+"'","'"+self.hhfile+"'",self.hnt,self.hindf]
-            nargskoral=[len(argsharm)] #AC
-            self.fdfile = self.hdfile
-            self.fhfile = self.hhfile
-            self.fnt = self.hnt
-            self.findf = self.hindf
-
-        if self.fname in ['KORAL3D','KORAL3D_DISK','KORAL3D_TOPJET','KORAL3D_BOTJET']:
-            nameskoral=['koral']
-            valskoral=["'"+self.hdfile+"'","'"+self.hhfile+"'",self.hnt,self.hindf]
-            nargskoral=[len(argsharm)] #AC
-            self.fdfile = self.hdfile
-            self.fhfile = self.hhfile
-            self.fnt = self.hnt
-            self.findf = self.hindf
-
-        if self.fname=='KORALNTH':
-            nameskoral=['koral']
-            valskoral=["'"+self.hdfile+"'","'"+self.hhfile+"'",self.hnt,self.hindf]
-            nargskoral=[len(argsharm)] #AC
-            self.fdfile = self.hdfile
-            self.fhfile = self.hhfile
-            self.fnt = self.hnt
-            self.findf = self.hindf
-
-        if self.fname=='THICKDISK':
-            namesthick=['thickdisk']
-            valsthick=["'"+self.tgfile+"'","'"+self.tdfile+"'",self.tnt,self.tnfiles,self.tindf,self.tjonfix,self.toff,"'"+self.tsim+"'",self.tdindf,self.tmagcrit]
-            nargsthick=[len(argsthick)]
-        if self.fname=='HARM3D':
-#             harm fluid arguments
             self.fdfile = self.hdfile
             self.fhfile = self.hhfile
             self.fnt = self.hnt
             self.findf = self.hindf
             self.fgfile = self.hgfile
+
+        if self.fname=='THICKDISK':
+            namesthick=['thickdisk']
+            valsthick=["'"+self.tgfile+"'","'"+self.tdfile+"'",self.tnt,self.tnfiles,self.tindf,self.tjonfix,self.toff,"'"+self.tsim+"'",self.tdindf,self.tmagcrit]
+            nargsthick=[len(argsthick)]
+
         if self.fname=='THINDISK':
             namest=['thindisk']
             valst=[self.tmdot,self.mbh]
@@ -392,7 +365,7 @@ class grtrans:
         self.inputs=grtrans_inputs(**kwargs)
         self.inputs.write(ifile)
         self.set_grtrans_input_file(ifile,oname)
-        print(oname)
+#        print(oname)
 
     def set_grtrans_input_file(self,fname,oname):
         nm.write_namelist('files.in',['files'],['ifile','ofile'],['"'+fname+'"','"'+oname+'"'],[2])
@@ -404,7 +377,23 @@ class grtrans:
 
     def print_input_list(self):
         print('printing grtrans argument list')
-        print(self.inputs.standard,self.inputs.mumin,self.inputs.mumax,self.inputs.nmu,self.inputs.phi0,self.inputs.spin,self.inputs.uout,self.inputs.uin,self.inputs.rcut,self.inputs.nrotype,self.inputs.gridvals,self.inputs.nn,self.inputs.i1,self.inputs.i2,self.inputs.fname,self.inputs.dt,self.inputs.nt,self.inputs.nload,self.inputs.nmdot,self.inputs.mdotmin,self.inputs.mdotmax,self.inputs.ename,self.inputs.mbh,self.inputs.nfreq,self.inputs.fmin,self.inputs.fmax,self.inputs.muval,self.inputs.gmin,self.inputs.gmax,self.inputs.p1,self.inputs.p2,self.inputs.fpositron,self.inputs.jetalpha,self.inputs.stype,self.inputs.use_geokerr,self.inputs.nvals,self.inputs.iname,self.inputs.cflag,self.inputs.extra,self.inputs.debug,self.inputs.outfile,self.inputs.fdfile,self.inputs.fhfile,self.inputs.fgfile,self.inputs.fsim,self.inputs.fnt,self.inputs.findf,self.inputs.fnfiles,self.inputs.fjonfix,self.inputs.pnw,self.inputs.pnfreq_tab,self.inputs.pnr,self.inputs.foffset,self.inputs.fdindf,self.inputs.fmagcrit,self.inputs.hrspot,self.inputs.hr0spot,self.inputs.hn0spot,self.inputs.ntscl,self.inputs.nrscl,self.inputs.pwmin,self.inputs.pwmax,self.inputs.pfmin,self.inputs.pfmax,self.inputs.prmax,self.inputs.psigt,self.inputs.pfcol,self.inputs.tmdot,self.inputs.snscl,self.inputs.snnthscl,self.inputs.snnthp,self.inputs.sbeta,self.inputs.sbl06,self.inputs.snp,self.inputs.snt,self.inputs.srin,self.inputs.srout,self.inputs.sthin,self.inputs.sthout,self.inputs.sphiin,self.inputs.sphiout,self.inputs.fscalefac,self.inputs.sigcut,self.inputs.epcoefindx,self.inputs.epotherargs,self.inputs.nep)
+        print(self.inputs.standard,self.inputs.mumin,self.inputs.mumax,self.inputs.nmu,self.inputs.phi0,
+            self.inputs.spin,self.inputs.uout,self.inputs.uin,
+            self.inputs.rcut,self.inputs.nrotype,self.inputs.gridvals,self.inputs.nn,self.inputs.i1,
+            self.inputs.i2,self.inputs.fname,self.inputs.dt,self.inputs.nt,self.inputs.nload,
+            self.inputs.nmdot,self.inputs.mdotmin,self.inputs.mdotmax,self.inputs.ename,self.inputs.mbh,
+            self.inputs.nfreq,self.inputs.fmin,self.inputs.fmax,self.inputs.muval,self.inputs.gmin,
+            self.inputs.gmax,self.inputs.p1,self.inputs.p2,self.inputs.fpositron,self.inputs.jetalpha,
+            self.inputs.stype,self.inputs.use_geokerr,self.inputs.nvals,self.inputs.iname,self.inputs.cflag,
+            self.inputs.extra,self.inputs.debug,self.inputs.outfile,self.inputs.fdfile,self.inputs.fhfile,
+            self.inputs.fgfile,self.inputs.fsim,self.inputs.fnt,self.inputs.findf,self.inputs.fnfiles,
+            self.inputs.fjonfix,self.inputs.pnw,self.inputs.pnfreq_tab,self.inputs.pnr,self.inputs.foffset,
+            self.inputs.fdindf,self.inputs.fmagcrit,self.inputs.hrspot,self.inputs.hr0spot,self.inputs.hn0spot,
+            self.inputs.ntscl,self.inputs.nrscl,self.inputs.pwmin,self.inputs.pwmax,self.inputs.pfmin,
+            self.inputs.pfmax,self.inputs.prmax,self.inputs.psigt,self.inputs.pfcol,self.inputs.tmdot,self.inputs.snscl,
+            self.inputs.snnthscl,self.inputs.snnthp,self.inputs.sbeta,self.inputs.sbl06,self.inputs.snp,
+            self.inputs.snt,self.inputs.srin,self.inputs.srout,self.inputs.sthin,self.inputs.sthout,self.inputs.sphiin,
+            self.inputs.sphiout,self.inputs.fscalefac,self.inputs.sigcut,self.inputs.epcoefindx,self.inputs.epotherargs,self.inputs.nep)
         return
 
     def run_pgrtrans(self,**kwargs):
@@ -416,7 +405,19 @@ class grtrans:
         self.inputs=grtrans_inputs(**kwargs)
 # call pgrtrans routine with arguments:
         self.print_input_list()
-        pgrtrans.grtrans_main(self.inputs.standard,self.inputs.mumin,self.inputs.mumax,self.inputs.nmu,self.inputs.phi0,self.inputs.spin,self.inputs.uout,self.inputs.uin,self.inputs.rcut,self.inputs.nrotype,self.inputs.gridvals,self.inputs.nn,self.inputs.i1,self.inputs.i2,self.inputs.fname,self.inputs.dt,self.inputs.nt,self.inputs.nload,self.inputs.nmdot,self.inputs.mdotmin,self.inputs.mdotmax,self.inputs.ename,self.inputs.mbh,self.inputs.nfreq,self.inputs.fmin,self.inputs.fmax,self.inputs.muval,self.inputs.gmin,self.inputs.gmax,self.inputs.p1,self.inputs.p2,self.inputs.fpositron,self.inputs.jetalpha,self.inputs.stype,self.inputs.use_geokerr,self.inputs.nvals,self.inputs.iname,self.inputs.cflag,self.inputs.extra,self.inputs.debug,self.inputs.outfile,self.inputs.fdfile,self.inputs.fhfile,self.inputs.fgfile,self.inputs.fsim,self.inputs.fnt,self.inputs.findf,self.inputs.fnfiles,self.inputs.fjonfix,self.inputs.pnw,self.inputs.pnfreq_tab,self.inputs.pnr,self.inputs.foffset,self.inputs.fdindf,self.inputs.fmagcrit,self.inputs.hrspot,self.inputs.hr0spot,self.inputs.hn0spot,self.inputs.ntscl,self.inputs.nrscl,self.inputs.pwmin,self.inputs.pwmax,self.inputs.pfmin,self.inputs.pfmax,self.inputs.prmax,self.inputs.psigt,self.inputs.pfcol,self.inputs.tmdot,self.inputs.snscl,self.inputs.snnthscl,self.inputs.snnthp,self.inputs.sbeta,self.inputs.sbl06,self.inputs.snp,self.inputs.snt,self.inputs.srin,self.inputs.srout,self.inputs.sthin,self.inputs.sthout,self.inputs.sphiin,self.inputs.sphiout,self.inputs.fscalefac,self.inputs.sigcut,self.inputs.epcoefindx,self.inputs.epotherargs,self.inputs.nep)
+        pgrtrans.grtrans_main(self.inputs.standard,self.inputs.mumin,self.inputs.mumax,self.inputs.nmu,self.inputs.phi0,
+            self.inputs.spin,self.inputs.uout,self.inputs.uin,self.inputs.rcut,self.inputs.nrotype,self.inputs.gridvals,self.inputs.nn,
+            self.inputs.i1,self.inputs.i2,self.inputs.fname,self.inputs.dt,self.inputs.nt,self.inputs.nload,self.inputs.nmdot,
+            self.inputs.mdotmin,self.inputs.mdotmax,self.inputs.ename,self.inputs.mbh,self.inputs.nfreq,self.inputs.fmin,self.inputs.fmax,
+            self.inputs.muval,self.inputs.gmin,self.inputs.gmax,self.inputs.p1,self.inputs.p2,self.inputs.fpositron,self.inputs.jetalpha,
+            self.inputs.stype,self.inputs.use_geokerr,self.inputs.nvals,self.inputs.iname,self.inputs.cflag,self.inputs.extra,self.inputs.debug,
+            self.inputs.outfile,self.inputs.fdfile,self.inputs.fhfile,self.inputs.fgfile,self.inputs.fsim,self.inputs.fnt,self.inputs.findf,
+            self.inputs.fnfiles,self.inputs.fjonfix,self.inputs.pnw,self.inputs.pnfreq_tab,self.inputs.pnr,self.inputs.foffset,self.inputs.fdindf,
+            self.inputs.fmagcrit,self.inputs.hrspot,self.inputs.hr0spot,self.inputs.hn0spot,self.inputs.ntscl,self.inputs.nrscl,self.inputs.pwmin,
+            self.inputs.pwmax,self.inputs.pfmin,self.inputs.pfmax,self.inputs.prmax,self.inputs.psigt,self.inputs.pfcol,self.inputs.tmdot,
+            self.inputs.snscl,self.inputs.snnthscl,self.inputs.snnthp,self.inputs.sbeta,self.inputs.sbl06,self.inputs.snp,self.inputs.snt,
+            self.inputs.srin,self.inputs.srout,self.inputs.sthin,self.inputs.sthout,self.inputs.sphiin,self.inputs.sphiout,
+            self.inputs.fscalefac,self.inputs.sigcut,self.inputs.epcoefindx,self.inputs.epotherargs,self.inputs.nep)
 # read output
         self.ivals = pgrtrans.ivals.copy()
         self.ab = pgrtrans.ab.copy()
