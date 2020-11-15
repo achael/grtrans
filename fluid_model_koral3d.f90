@@ -285,10 +285,10 @@
         thmintrust = 0.
         thmaxtrust = pi
 
-        !cut out 15 degrees away from poles for disk (also cut out high Be in fluid.f90)
+        !cut out 10 degrees away from poles for disk (also cut out high Be in fluid.f90)
         if (type.eq.1) then
-           thmintrust = 0.25
-           thmaxtrust = pi - 0.25
+           thmintrust = 0.17
+           thmaxtrust = pi - 0.17
 
         !cut out background entirely -- all theta > pi/2 !AC -- assumes symmetric grid!!
         else if(type.eq.2) then 
