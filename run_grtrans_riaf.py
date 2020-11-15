@@ -28,10 +28,10 @@ DISPLAYOUT = True # display output image(s)
 # Broderick & Loeb 06/09 parameters
 BLO6 = 0                # Use Broderick 06 conventions (1) or Broderick 09 conventions (0)
 TSCL = 1.5e11           # scaling factor for electron temperature
-BETA = 10.              # plasma beta
-NTHFRAC = .01           # fraction of nonthermal electrons
+BETA = 10.#10.              # plasma beta
+NTHFRAC = .05           # fraction of nonthermal electrons
 GAMMAMIN = 100          # minimum gamma for power law distribution
-GAMMAMAX = 1.e6         # maximum gamma for power law distribution         
+GAMMAMAX = 1.e8         # maximum gamma for power law distribution         
 PNTH = 3.5              # nonthermal power law index
 FPOSITRON=0             # 0 < npositron/nelectron < 1
 NTH_RADIAL_PLAW = 2.02  # radial power law for nonthermal electrons (fixed to -2.02 in BL11)
@@ -54,18 +54,18 @@ ANG = 60.    # polar angle (degrees)
 ROTANG = 156 # rotation angle in sky plane (degrees)
 
 # Raytrace parameters - image
-FLUX = 3.5          # desired flux in Jy
+FLUX = 3.1          # desired flux in Jy
 RFGHZ = 230.        # Frequency in Ghz
-FOV = 50.           # FOV / Rg
-NPIX = 64           # number of pixels
+FOV = 30.           # FOV / Rg
+NPIX = 128           # number of pixels
 NGEO = 500          # number of geodesic points
 
 # Raytrace parameters - spectrum
 NFREQ = 20          # number of frequencies
-FOV_SPEC = 2*FOV      # FOV / Rg
+FOV_SPEC = 10*FOV      # FOV / Rg
 NPIX_SPEC = NPIX    # number of pixels in spectrum image
 FMIN = 1.e9         # minimum freq in spectrum
-FMAX = 1.e14        # maximum freq in spectrum 
+FMAX = 1.e15        # maximum freq in spectrum 
 
 DEPTH = 5 # raytracing outer volume is DEPTH*FOV/2 in Rg
 
