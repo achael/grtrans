@@ -1,8 +1,5 @@
       module grtrans_inputs
 
-! for future with multiple emis names
-!      use strings, only: countsubstring
-
       implicit none
 
       namelist /geodata/   standard,mumin,mumax,nmu,phi0,spin, uout,uin, rcut, &
@@ -12,8 +9,9 @@
       namelist /emisdata/  ename, mbh, nfreq, fmin, fmax, muval, gmin, gmax, p1, p2, &
                            fpositron, jetalpha, stype, delta, nweights, coefindx
       namelist /general/   use_geokerr, nvals, iname, cflag
-! namelists for fluid models
-! AC koral will share same structure as harm...
+
+      ! namelists for fluid models
+      ! AC koral will share same structure as harm.
       namelist /harm/  fdfile, fgfile, fhfile, fnt, fnfiles, findf, fjonfix, &
            foffset, fsim, fdindf, fmagcrit, fscalefac
       namelist /analytic/ fnw, fwmin, fwmax, fnfreq_tab, ffmin, ffmax, frmax, fnr, fsigt, ffcol, &
@@ -30,6 +28,7 @@
       real(kind=8), dimension(:), allocatable :: freqs,mdots,mu0
       real(kind=8), dimension(4) :: gridvals
       integer, dimension(3) :: nn
+
       ! fluid arguments
       character(len=500) :: fdfile,fhfile,fgfile,fsim
       integer :: fnt,findf,fnfiles,fjonfix,fnw,fnfreq_tab, &
@@ -39,26 +38,24 @@
            ffmax,frmax,fsigt,ffcol,fmdot,fnscl,fnnthscl,fnnthp,fbeta,fnp,ftp, &
            frin,frout,fthin,fthout,fphiin,fphiout,fscalefac
       real(kind=8), dimension(:), allocatable :: epotherargs
+
       interface read_inputs
         module procedure read_inputs
       end interface
  
       contains
 
+      ! read input variables
         subroutine read_inputs(file)
         character(len=500), intent(in) :: file
         integer :: i
           open(unit=8, file=file)
           read(8,nml=geodata)
-!          write(6,*) 'n: ',n
-!          read(8,nml=emisdata)
           read(8,nml=fluiddata)
-!          write(6,*) 'model: ',fname
           read(8,nml=emisdata)
           read(8,nml=general)
           read(8,nml=harm)
           read(8,nml=analytic)
-!          write(6,*) 'general: ',iname
           close(unit=8)
           a1=dble(gridvals(1))
           a2=dble(gridvals(2))
@@ -67,8 +64,8 @@
           nro=nn(1)
           nphi=nn(2)
           nup=nn(3)
-!          write(6,*) 'read inputs nup: ',spin
-! Compute frequencies w/ log spacing between and including fmin, fmax:
+
+          ! Compute frequencies w/ log spacing between and including fmin, fmax:
           allocate(freqs(nfreq)); allocate(mu0(nmu)); allocate(mdots(nmdot))
           if(nfreq==1) then
             freqs=(/fmin/)
@@ -85,7 +82,8 @@
           else
             mu0=mumin+(mumax-mumin)/(nmu-1)*(/(i-1,i=1,nmu)/)
           endif
-! new stuff for epotherargs:
+
+          ! new stuff for epotherargs:
           if(nweights==1) then
              allocate(epotherargs(2))
              epotherargs(1)=delta
@@ -97,12 +95,11 @@
                   2.17450422,1.36515333,0.52892829/)
           endif
           nepotherargs=nweights+1
-!          write(6,*) 'nup: ',nup,freqs,fmax,fmin,fmin*exp(log(fmax/fmin))
         end subroutine read_inputs
 
+      ! deallocate input variables
         subroutine delete_inputs()
-! deallocate input variables
-        deallocate(mu0); deallocate(freqs); deallocate(mdots); deallocate(epotherargs)
+          deallocate(mu0); deallocate(freqs); deallocate(mdots); deallocate(epotherargs)
         end subroutine delete_inputs
 
       end module grtrans_inputs

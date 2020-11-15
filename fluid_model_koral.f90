@@ -1,5 +1,6 @@
    !AC -- read KORAL files 2/2/17
    !   -- modified from fluid_model_harm.f90
+   ! can we merge with fluid_model_koral3d??
    module fluid_model_koral
 
       use class_four_vector
