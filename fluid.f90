@@ -53,12 +53,16 @@ module fluid_model
   ! placeholder values for nothermal electrons 
   integer :: nrelbin=0
   real :: bingammamin=1., bingammamax=1.
+ 
+  ! flag for if we have electrons or not -- !AC TODO handle this better
+  integer :: has_electrons=0
+
 
   ! fluid data type
   type fluid
     integer :: model, nfreq, nrelbin
     real :: rin,bingammamin,bingammamax,sigcut
-    real, dimension(:), allocatable :: rho,p,bmag,rho2, &
+    real, dimension(:), allocatable :: rho,p,te,ti,bmag,rho2, &
          kela,kelb,kelc,keld,Be
     real, dimension(:,:), allocatable :: fnu
     real, dimension(:,:), allocatable :: nnth
@@ -339,9 +343,13 @@ module fluid_model
               elseif(fname=='KORAL') then
                  f%model=KORAL
                  allocate(f%Be(nup))
+                 allocate(f%te(nup))
+                 allocate(f%ti(nup))
               elseif(fname=='KORALNTH') then
                  f%model=KORALNTH
                  allocate(f%Be(nup))
+                 allocate(f%te(nup))
+                 allocate(f%ti(nup))
                  allocate(f%nnth(nup, nrelbin))
                  f%nrelbin=nrelbin
                  f%bingammamin=bingammamin
@@ -349,18 +357,28 @@ module fluid_model
               elseif(fname=='KORAL3D') then
                  f%model=KORAL3D
                  allocate(f%Be(nup))
+                 allocate(f%te(nup))
+                 allocate(f%ti(nup))
               elseif(fname=='KORAL3D_DISK') then
                  f%model=KORAL3D_DISK
                  allocate(f%Be(nup))
+                 allocate(f%te(nup))
+                 allocate(f%ti(nup))
               elseif(fname=='KORAL3D_BOTJET') then
                  f%model=KORAL3D_BOTJET
                  allocate(f%Be(nup))
+                 allocate(f%te(nup))
+                 allocate(f%ti(nup))
               elseif(fname=='KORAL3D_TOPJET') then
                  f%model=KORAL3D_TOPJET
                  allocate(f%Be(nup))
+                 allocate(f%te(nup))
+                 allocate(f%ti(nup))
               elseif(fname=='KORALH5') then
                  f%model=KORALH5
                  allocate(f%Be(nup))
+                 allocate(f%te(nup))
+                 allocate(f%ti(nup))
               elseif(fname=='FFJET') then
                  f%model=FFJET
               elseif(fname=='RRJET') then
@@ -453,6 +471,16 @@ module fluid_model
            endif
            if(f%model==SARIAF.or.f%model==POWERLAW) deallocate(f%rho2)
            if(f%model==KORALNTH) deallocate(f%nnth)
+           if(f%model==KORAL.or.f%model==KORAL3D.or.f%model==KORAL3D_TOPJET) then
+              deallocate(f%Be)
+              deallocate(f%ti)
+              deallocate(f%te)
+           endif !AC TODO too dumb to figure out line continuation at 5 am
+           if(f%model==KORAL3D_BOTJET.or.f%model==KORAL3D_DISK.or.f%model==KORALH5) then
+              deallocate(f%Be)
+              deallocate(f%ti)
+              deallocate(f%te)
+           endif
            if(f%model==HARMPI) then
               deallocate(f%kela); deallocate(f%kelb)
               deallocate(f%kelc); deallocate(f%keld)
@@ -560,19 +588,19 @@ module fluid_model
           CASE (MB09)
             call convert_fluidvars_mb09(f,ncgs,ncgsnth,bcgs,tcgs,sp)
           CASE (KORAL)
-            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,0)
+            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,0,0)
           CASE (KORALNTH)
-            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,0)             
+            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,0,0)             
           CASE (KORAL3D)
-            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,0)
+            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,0,0)
           CASE (KORAL3D_DISK)
-            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,1)
+            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,1,0)
           CASE (KORAL3D_TOPJET)
-            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,2)
+            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,2,0)
           CASE (KORAL3D_BOTJET)
-            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,3)
-          CASE (KORALH5) !TODO AC -- will we need to convert these differently?  
-            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,0)
+            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,3,0)
+          CASE (KORALH5) 
+            call convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tcgs,nnthcgs,sp,0,1)
           CASE (SARIAF)
             call convert_fluidvars_sariaf(f,ncgs,ncgsnth,bcgs,tcgs,sp)
           CASE (TOY)
@@ -736,10 +764,9 @@ module fluid_model
     subroutine get_koral_fluidvars(x0,a,f)
         type (four_Vector), intent(in), dimension(:) :: x0
         real, intent(in) :: a
-        type (fluid), intent(inout) :: f
-!        real(kind=8), dimension(size(x0)) :: zero,ones,uout,bout,nout,tout,rr,th  
+        type (fluid), intent(inout) :: f !AC TODO merge with 3D
 
-        call koral_vals(x0,a,f%rho,f%p,f%b,f%u,f%bmag,f%nnth)
+        call koral_vals(x0,a,f%rho,f%te,f%b,f%u,f%bmag,f%nnth) !AC replaced p-->te
     end subroutine get_koral_fluidvars
 
     subroutine get_koral3d_fluidvars(x0,a,f,type)
@@ -747,9 +774,8 @@ module fluid_model
         real, intent(in) :: a
         integer, intent(in) :: type
         type (fluid), intent(inout) :: f
-!        real(kind=8), dimension(size(x0)) :: zero,ones,uout,bout,nout,tout,rr,th  
 
-        call koral3d_vals(x0,a,f%rho,f%p,f%b,f%u,f%bmag,f%Be, f%nnth,type)
+        call koral3d_vals(x0,a,f%rho,f%te, f%ti, f%b,f%u,f%bmag,f%Be,f%nnth,type) !AC replaced p-->te
     end subroutine get_koral3d_fluidvars
 
     subroutine get_koralh5_fluidvars(x0,a,f,type)
@@ -757,9 +783,11 @@ module fluid_model
         real, intent(in) :: a
         integer, intent(in) :: type
         type (fluid), intent(inout) :: f
-!        real(kind=8), dimension(size(x0)) :: zero,ones,uout,bout,nout,tout,rr,th  
+        integer :: electrons
 
-        call koralh5_vals(x0,a,f%rho,f%p,f%b,f%u,f%bmag,f%Be,type)
+        call koralh5_vals(x0,a,f%rho,f%p, f%te, f%ti, f%b,f%u,f%bmag,f%Be,type,has_electrons)
+        has_electrons = electrons
+
     end subroutine get_koralh5_fluidvars
 
 
@@ -1128,7 +1156,7 @@ module fluid_model
     ! EHT theory notes formulae based on Moscibrodzka+2016
     ! assumes inputs are in cgs units
     subroutine charles_e(rho,p,u,b,beta_trans,rlow,rhigh,tcgs)
-        real(kind=4), intent(in), dimension(:) :: rho,p,u,b
+        real(kind=8), intent(in), dimension(:) :: rho,p,u,b
         real(kind=8), intent(in) :: rlow,rhigh,beta_trans
         real(kind=8), intent(inout), dimension(size(rho)) :: tcgs
         real(kind=8), dimension(size(rho)) :: beta,b2,trat
@@ -1363,24 +1391,58 @@ module fluid_model
 
     ! AC: KORAL quantities should ALREADY be in CGS 
     ! AC: be careful with HL vs Gaussian Bfield!
-    subroutine convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tempcgs,nnthcgs,sp,type)
+    subroutine convert_fluidvars_koral(f,ncgs,ncgsnth,bcgs,tempcgs,nnthcgs,sp,cuttype,vartype)
         type (fluid), intent(in) :: f
         type (source_params), intent(in) :: sp
-        integer, intent(in) :: type
-        real(kind=8) :: sigcut
+        integer, intent(in) :: cuttype, vartype
+        real(kind=8) :: sigcut, mbh,lcgs,dcgs
         real(kind=8), dimension(size(f%rho)) :: sigmacgs
         real(kind=8), dimension(size(f%rho)), intent(out) :: ncgs,ncgsnth,bcgs,tempcgs
         real(kind=8), dimension(size(f%rho), f%nrelbin), intent(out) :: nnthcgs        
-        real(kind=8), dimension(size(f%rho)) :: rhocgs
+        real(kind=8), dimension(size(f%rho)) :: rhocgs, pcgs, tecgs, ticgs, bhl
         real(kind=8), dimension(size(f%rho)) :: trat
         real(kind=8) :: beta_trans
 
         sigcut=sp%sigcut
-        rhocgs=f%rho
-        ncgs=rhocgs/mp !TODO AC: handle non-hydrogen plasma
+        mbh=sp%mbh
 
-        !convert HL B-field to gaussian
-        bcgs=f%bmag*sqrt(4*pi)
+        ! convert to cgs if necessary
+        if(vartype.eq.1) then ! convert to cgs -- fix mdot
+
+          lcgs=GC*mbh*msun/c**2
+          dcgs=mbh*msun/(lcgs**3)
+
+          rhocgs=dcgs*f%rho; 
+          ncgs=rhocgs/mp
+          pcgs=f%p*dcgs*(c**2d0)
+
+          if(has_electrons.eq.1) then ! has_electrons is a global set in get_fluidvars_koralh5
+            tecgs = f%te
+            ticgs = f%ti
+          else
+            tecgs =pcgs/(2*ncgs)/k ! single electron-ion fluid, assumed equal temperature her
+          endif
+
+          bhl=f%bmag*sqrt(dcgs)*c
+          bcgs=bhl*sqrt(4d0*pi) !HL to Gaussian
+
+          nnthcgs=f%nnth ! binned non-thermal e- (TODO doesn't exist in h5 yet, so no units)
+          ncgsnth=0. !AC TODO: add other koral nonthermal prescriptions
+
+        else ! already in cgs
+
+          rhocgs=f%rho
+          ncgs=rhocgs/mp !TODO AC: handle non-hydrogen plasma
+          tecgs=f%te ! AC: finally changed p-->te array
+          ticgs = f%ti
+
+          !convert HL B-field to gaussian
+          bhl = f%bmag
+          bcgs= bhl*sqrt(4*pi)
+
+          nnthcgs=f%nnth ! binned non-thermal e-, already in cgs if present
+          ncgsnth=0. !AC TODO: add other koral nonthermal prescriptions
+        endif
 
         ! JD: allow scaling w/ Mdot
 !       write(6,*) 'convert koral nfac: ', sp%nfac,sp%sigcut,sp%gminval
@@ -1393,18 +1455,20 @@ module fluid_model
         if(sp%gminval.ge.1d0) then
            beta_trans = 1d0
 
-           ! f%Be is confusingly the proton temperature here (AC: are we sure?)
+           ! f%Be is confusingly the proton temperature here (AC: changed to electron temperature!)
            ! JD: CHANGING koral Rhigh method to align with EHT theory notes
-           call charles_e(f%rho,f%p+f%Be,2.*f%p+f%Be,f%bmag,beta_trans,1d0,sp%gminval,tempcgs)
+!           call charles_e(f%rho,f%p+f%Be,2.*f%p+f%Be,f%bmag,beta_trans,1d0,sp%gminval,tempcgs)
+           call charles_e(rhocgs,tecgs+ticgs,2.*tecgs+ticgs,bhl,beta_trans,1d0,sp%gminval,tempcgs)
         else 
-           tempcgs=f%p 
+!           tempcgs=f%p 
+           tempcgs=f%te ! AC: finally changed p-->te array
         endif
 
         ! apply sigma cut
         call andrew_sigcut(bcgs,rhocgs,tempcgs,ncgs,sigcut)
 
         !ANDREW -- zero out density to zero out emissivity in disk or jet
-        if(type.eq.1) then  !zero out jet
+        if(cuttype.eq.1) then  !zero out jet
             !AC --  old -- sigma cutoff defines jet
             !where(sigmacgs.ge.1)
             !   rhocgs = 0.
@@ -1420,7 +1484,7 @@ module fluid_model
                 end where
             end if
        
-        elseif((type.eq.2).or.(type.eq.3)) then !zero out disk
+        elseif((cuttype.eq.2).or.(cuttype.eq.3)) then !zero out disk
             !ANDREW --  old -- sigma cutoff defines jet
             !where(sigmacgs.le.1)
             !   rhocgs = 0.
@@ -1437,8 +1501,6 @@ module fluid_model
             end if
         endif
         
-        nnthcgs=f%nnth ! binned non-thermal e-, already in cgs
-        ncgsnth=0. !AC TODO: add other koral nonthermal prescriptions
         
         ! warnings
         if(any(isnan(tempcgs))) then

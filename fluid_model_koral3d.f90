@@ -30,8 +30,6 @@
       real, dimension(:,:), allocatable :: nth_arr
       real, dimension(:), allocatable :: b0_arr, br_arr, bth_arr, bph_arr
 
-!      shortfile=.TRUE.
-
       interface init_koral3d_data
         module procedure init_koral3d_data
       end interface
@@ -80,7 +78,7 @@
         end subroutine transformmksh32bl
 
         ! Interpolates KORAL data to input coordinates
-        subroutine koral3d_vals(x0,a,rho,p,b,u,bmag,Be,nth,type)
+        subroutine koral3d_vals(x0,a,rho,te,ti,b,u,bmag,Be,nth,type) !
 
         type (four_Vector), intent(in), dimension(:) :: x0
         real, intent(in) :: a
@@ -102,7 +100,7 @@
         real :: x2mintrust, x2maxtrust,thmintrust,thmaxtrust
         integer :: npts,i,j,maxtindx,ie
         real, dimension(size(x0)) :: b1tmp,b2tmp,b3tmp,b4tmp,u1tmp,ntmp
-        real, dimension(size(x0)), intent(out) :: rho,p,bmag,Be
+        real, dimension(size(x0)), intent(out) :: rho,te,ti,bmag,Be
         real, dimension(size(x0),nrelbin), intent(out) :: nth
         type (four_Vector), intent(out), dimension(size(x0)) :: u,b
         
@@ -140,10 +138,10 @@
 
         where(zphi.lt.0.)
             zphi=zphi+2.*pi
-        endwhere
+        end where
         where(zphi.gt.pi)
             zphi=zphi-2.*pi
-        endwhere
+        end where
 
         x1 = log(dble(zr)-r0)
         x3 = zphi
@@ -254,7 +252,7 @@
         !interpolate data
         rttd=0.
         rho=interp(rhoi,rttd,pd,rd,td)
-        p=interp(ppi,rttd,pd,rd,td)
+        te=interp(ppi,rttd,pd,rd,td) ! 'pressure' is actually electron temperature
         Be=interp(Bei,rttd,pd,rd,td)
         vrl0=interp(vrli,rttd,pd,rd,td)
         vtl0=interp(vtli,rttd,pd,rd,td)
@@ -267,7 +265,7 @@
 
         !mask data outside trusted region
         rho=merge(rho,dzero,x1.gt.uniqx1(1))*nfac
-        p=merge(p,fone,x1.gt.uniqx1(1))*pfac 
+        te=merge(te,fone,x1.gt.uniqx1(1))*pfac 
         Be=merge(Be,dzero,x1.gt.uniqx1(1)) !AC -- does using zero make sense?
         vrl0=merge(vrl0,dzero,x1.gt.uniqx1(1))
         vtl0=merge(vtl0,fone,x1.gt.uniqx1(1))
@@ -302,7 +300,7 @@
         !theta based cuts for jet
         if((type.eq.1).or.(type.eq.2).or.(type.eq.3)) then
             rho=merge(rho,dzero,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
-            p=merge(p,fone,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
+            te=merge(te,fone,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
             Be=merge(Be,dzero,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))!AC -- does using zero make sense?
             vrl0=merge(vrl0,dzero,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
             vtl0=merge(vtl0,fone,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
@@ -316,7 +314,7 @@
 
         !x2 based cuts for polar axis
         rho=merge(rho,dzero,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
-        p=merge(p,fone,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust)) 
+        te=merge(te,fone,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust)) 
         Be=merge(Be,dzero,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust)) !AC -- does using zero make sense?
         vrl0=merge(vrl0,dzero,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
         vtl0=merge(vtl0,fone,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
@@ -326,6 +324,15 @@
         b%data(4)=merge(b4tmp,fone,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
         u%data(1)=merge(dble(u1tmp),done,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
         vpl0=merge(vpl0,dzero,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
+
+        ! currrently shortfile reads ion temperature info in Be array 
+        ! TODO fix!
+
+        if(shortfile) then 
+          ti = Be
+        else
+          ti = te !AC TODO should load ion temperature even in longfile
+        endif
 
         !AC load nonthermal
         !AC do we have to do this in a loop? 
@@ -410,10 +417,10 @@
         real(8), dimension(:,:), allocatable, intent(out) :: nnth
         real(8), dimension(:), allocatable :: gdet, header, header2
         type (four_vector), dimension(:), allocatable, intent(out) :: u,b
-        real(8), dimension(:,:), allocatable :: grid, data, tmetric
+        real(8), dimension(:,:), allocatable :: grid, data
         integer :: i, nelem
 
-        shortfile = .FALSE.
+
 
           !AC TODO still need to change these positions for 3d sim files!!
           if(nrelbin>0) then
@@ -422,6 +429,7 @@
              dlen = 38
           endif
 
+          shortfile = .FALSE.
           if(shortfile) dlen = 23
 
           nhead=11; nhead2=3

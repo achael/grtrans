@@ -171,6 +171,7 @@
         ux2=lx2+1
         lx3=floor((x3-uniqx3(1))/(uniqx3(nx3)-uniqx3(1))*(nx3-1))+1
         ux3=lx3+1
+
         lx2=merge(merge(lx2,one,lx2.ge.1),umax,lx2.le.(nx2-1))
         lx1=merge(lx1,one,lx1.ge.1)
         ux1=lx1+1
@@ -188,6 +189,7 @@
         elsewhere
             dth=uniqth(1)*2
         endwhere
+
 ! periodic in phi
         minph=uniqph(lx3)
         where(ux3.gt.nx3)
@@ -285,6 +287,8 @@
  !       write(6,*) 'u'
         u%data(1)=merge(dble(interp(u0i,rttd,pd,rd,td)),done,x1.gt.uniqx1(1))
         vpl0=merge(interp(vpli,rttd,pd,rd,td),dzero,x1.gt.uniqx1(1))
+
+
 !        write(6,*) 'after assign'
         ! Protect azimuthal velocities at poles
         ! Compute magnitude of interpolated b-field and force b^2 > 0 (need to look into numerical issues here):
@@ -292,6 +296,7 @@
          real(x0%data(3)),a)))
         bmag=b*b; bmag=merge(bmag,dzero,bmag.ge.0d0)
         bmag=sqrt(bmag)*bfac
+
         ! Get four-velocity:
         call lnrf_frame(vrl0,vtl0,vpl0,zr,a,real(x0%data(3)) &
          ,vr0,vth0,vph0,1)

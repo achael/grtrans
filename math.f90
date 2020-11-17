@@ -1,23 +1,23 @@
-       module math
+ module math
  
-       interface tsum
-         module procedure tsum
-       end interface
+   interface tsum
+     module procedure tsum
+   end interface
 
-       interface sum
-         module procedure cum_sum
-       end interface
+   interface sum
+     module procedure cum_sum
+   end interface
 
-       interface dot_product
-         module procedure dot_product_arr
-       end interface
+   interface dot_product
+     module procedure dot_product_arr
+   end interface
 
-       interface zbrent
-          module procedure zbrent
-          module procedure zbrent_array
-       end interface
+   interface zbrent
+      module procedure zbrent
+      module procedure zbrent_array
+   end interface
 
-       contains
+   contains
 
        pure function dot_product_arr(a,b) result(dot)
        real(kind=8), dimension(:,:), intent(in) :: a,b
@@ -184,11 +184,11 @@
 !            where(converge) zbrent=b
             converge=(abs(xm) <= tol1 .or. fb == 0d0)
 !            write(6,*) 'converge: ',converge,abs(xm)
-! converged everywhere just return
-! weird because you re-assign the converged results every iteration
-! the python and IDL versions do this by indexing to keep track of absolute vs. new parts of arrays but don't know how to do that in fortran
-! can probably do this without indexing separately by just recalculating nconverge each time and only assigning to zbrent for nconverge and not for converge
-! TRY THAT
+            ! converged everywhere just return
+            ! weird because you re-assign the converged results every iteration
+            ! the python and IDL versions do this by indexing to keep track of absolute vs. new parts of arrays but don't know how to do that in fortran
+            ! can probably do this without indexing separately by just recalculating nconverge each time and only assigning to zbrent for nconverge and not for converge
+            ! TRY THAT
             where(converge)
                zbrent=b
             elsewhere
@@ -229,4 +229,4 @@
          zbrent=b
        end function zbrent_array
 
-       end module math
+end module math

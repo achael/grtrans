@@ -1,4 +1,4 @@
-      module class_four_Vector
+module class_four_Vector
 
 !     filename: class_Vector.inc 
 !     public, everything by default, but can specify any 
@@ -680,4 +680,4 @@
         new = real_mult_four_Vector_arr (r, v)
         end function four_Vector_mult_real_arr
 
-      end module class_four_Vector
+end module class_four_Vector
