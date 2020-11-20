@@ -1,73 +1,75 @@
 !AC -- read KORAL files 2/2/17
 !   -- modified from fluid_model_harm.f90
-   module fluid_model_koral3d
+! TODO -- better handling of doingte, shortfile 
 
-      use class_four_vector
-      use interpolate, only: interp
-      use kerr, only: kerr_metric, lnrf_frame, uks2ubl, bl2ks
-      use phys_constants, only: pi
-      use math, only: zbrent
-      implicit none
+module fluid_model_koral3d
 
-      !AC koral will read modified harm .in files for now
-      !AC should change to special koral namelist
-      namelist /harm/  dfile, hfile, nt, indf
+  use class_four_vector
+  use interpolate, only: interp
+  use kerr, only: kerr_metric, lnrf_frame, uks2ubl, bl2ks
+  use phys_constants, only: pi
+  use math, only: zbrent
+  implicit none
 
-      logical :: doingkoralnth,shortfile
-      character(len=500) :: dfile, hfile
-      integer :: nx1, nx2, nx3,n, ndumps, nt, indf, dlen, nhead
-      integer :: nrelbin=0
-      integer :: ndim=3
-      integer :: minpolecell=2
-      integer, dimension(:), allocatable :: dumps
-      real :: tstep=20., h, r0, aa, bb, pp, asim, dx1, dx2, gam, startx1, startx2, toffset=0.
-      real :: relgammamin=1., relgammamax=1.
-      real(8) :: scalefac
-      real, dimension(:), allocatable :: t
-      real, dimension(:), allocatable :: x1_arr, x2_arr, x3_arr,r_arr, th_arr,ph_arr
-      real, dimension(:), allocatable :: rho_arr, p_arr, Be_arr, u0_arr, vrl_arr, &
-           vpl_arr, vtl_arr
-      real, dimension(:,:), allocatable :: nth_arr
-      real, dimension(:), allocatable :: b0_arr, br_arr, bth_arr, bph_arr
+  !AC koral will read modified harm .in files for now
+  !AC should change to special koral namelist
+  namelist /harm/  dfile, hfile, nt, indf
 
-      interface init_koral3d_data
-        module procedure init_koral3d_data
-      end interface
+  logical :: doingkoralnth,shortfile,doingte,doingmks3
+  character(len=500) :: dfile, hfile
+  integer :: nx1, nx2, nx3,n, ndumps, nt, indf, dlen, nhead
+  integer :: nrelbin=0
+  integer :: ndim=3
+  integer :: minpolecell=2
+  integer, dimension(:), allocatable :: dumps
+  real :: tstep=20., h, r0, aa, bb, pp, asim, dx1, dx2, gam, startx1, startx2, toffset=0.
+  real :: relgammamin=1., relgammamax=1.
+  real(8) :: scalefac
+  real, dimension(:), allocatable :: t
+  real, dimension(:), allocatable :: x1_arr, x2_arr, x3_arr,r_arr, th_arr,ph_arr
+  real, dimension(:), allocatable :: rho_arr, p_arr, Be_arr, u0_arr, vrl_arr, &
+       vpl_arr, vtl_arr
+  real, dimension(:,:), allocatable :: nth_arr
+  real, dimension(:), allocatable :: b0_arr, br_arr, bth_arr, bph_arr
 
-      interface del_koral3d_data
-        module procedure del_koral3d_data
-      end interface
+  interface init_koral3d_data
+    module procedure init_koral3d_data
+  end interface
 
-      interface initialize_koral3d_model
-        module procedure initialize_koral3d_model
-      end interface
+  interface del_koral3d_data
+    module procedure del_koral3d_data
+  end interface
 
-      interface transformbl2mksh3
-         module procedure transformbl2mksh3
-      end interface
+  interface initialize_koral3d_model
+    module procedure initialize_koral3d_model
+  end interface
 
-      interface transformmksh32bl
-         module procedure transformmksh32bl
-      end interface
+  interface transformbl2mksh3
+     module procedure transformbl2mksh3
+  end interface
 
-      interface koral3d_vals
-        module procedure koral3d_vals
-      end interface
+  interface transformmksh32bl
+     module procedure transformmksh32bl
+  end interface
 
-      contains
+  interface koral3d_vals
+    module procedure koral3d_vals
+  end interface
+
+  contains
 
         ! transform Boyer-Lindquist theta coordinates to modified Kerr-Schild x2 at a corresponding array of r 
-        subroutine transformbl2mksh3(th,r,x2,h,a,b,p)
+    subroutine transformbl2mksh3(th,r,x2,h,a,b,p)
 
         real, intent(in), dimension(:) :: th,r
         real, intent(out), dimension(size(th)) :: x2
         real, intent(in) :: h,a,b,p
 
         x2=0.5*(1 + ((r**p)/(h*pi)) * (atan(tan(0.5*h*pi)*(1-2*th/pi))/((b-a)*(2**p)+(a-0.5)*(r**p))))
-        end subroutine transformbl2mksh3
+    end subroutine transformbl2mksh3
 
         ! transform modified Kerr-Schild x2 to Boyer-Lindquist theta at a corresponding array of r=r0+exp(x1)
-        subroutine transformmksh32bl(x2,r,th,h,a,b,p)
+    subroutine transformmksh32bl(x2,r,th,h,a,b,p)
 
         real, intent(in), dimension(:) :: x2,r
         real, intent(out), dimension(size(x2)) :: th
@@ -75,10 +77,32 @@
         
         th = 0.5*pi*(1 + tan(h*pi*(-0.5+x2+(1-2*x2)*(a+(2**p)*(b-a)/(r**p))))/tan(0.5*h*pi))
         !write(6,*) 'x2len: ', size(x2)
-        end subroutine transformmksh32bl
+    end subroutine transformmksh32bl
 
-        ! Interpolates KORAL data to input coordinates
-        subroutine koral3d_vals(x0,a,rho,te,ti,b,u,bmag,Be,nth,type) !
+    ! transform BL (r,theta) coordinates to modified Kerr-Schild mks2 (x1,x2)
+    subroutine transformbl2mks2(r,th, x1, x2,r0, h)
+
+        real, intent(in), dimension(:) :: r,th
+        real, intent(out), dimension(size(th)) :: x1,x2
+        real, intent(in) :: r0, h
+
+        x1 = log(dble(r)-r0)
+        x2 = 0.5 + atan(tan(0.5*pi*h)*(2*th/pi-1))/(h*pi)
+    end subroutine transformbl2mks2
+
+    ! transform modified Kerr-Schild mks2 (x1,x2) to Boyer-Lindquist (r,theta) 
+    subroutine transformmks22bl(x1, x2,r,th,r0, h)
+        real, intent(in), dimension(:) :: x1, x2
+        !real, intent(in), dimension(:) :: x2,r
+        real, intent(out), dimension(size(x2)) :: r, th
+        real, intent(in) :: r0, h
+        
+        r = exp(dble(x1)) + r0
+        th = 0.5*pi*(1 + tan(h*pi*(x2-0.5))/tan(0.5*h*pi))
+    end subroutine transformmks22bl
+
+    ! Interpolates KORAL data to input coordinates
+    subroutine koral3d_vals(x0,a,rho,te,ti,b,u,bmag,Be,nth,type) !
 
         type (four_Vector), intent(in), dimension(:) :: x0
         real, intent(in) :: a
@@ -93,7 +117,7 @@
         real, dimension(size(x0),2**(ndim+1)) :: ppi,Bei,rhoi,vrli,vtli, &
              vpli,bri,bthi,bphi,b0i,u0i, nth_bini
 
-        real, dimension(size(x0)) :: dth,thu,thl,thone,minph
+        real, dimension(size(x0)) :: dth,thu,thl,thone,minph,rdummy
         integer, dimension(size(x0)*2*(2**ndim)) :: indx
         integer, dimension(size(x0)) :: lx1,lx2,lx3,ux1,ux2,ux3,x1l,x1u,x2l,x2u, x3l,x3u, &
          one,tindx,lx2l,lx2u,ux2l,ux2u,lx3l,lx3u,ux3l,ux3u,low,high
@@ -126,10 +150,8 @@
         tt=-tt+1d-8
 
         zpp=x0%data(4)
-        !!zphi=zpp
-        !!zphi=mod(zphi,(2.*pi))
-        
-        !!  AC this is necessary for koral dumps that keep phi output in ks!!
+
+        !  AC this is necessary for koral dumps that keep phi output in ks!!
         zphi=bl2ks(dble(zr), dble(zpp), dble(a))
         zphi=mod(zphi,(2.*pi))
         if(any(isnan(zphi))) then
@@ -145,7 +167,13 @@
 
         x1 = log(dble(zr)-r0)
         x3 = zphi
-        call transformbl2mksh3(theta,zr,x2,h,aa,bb,pp)
+
+        ! AC TODO change coordinate system here (can read from additional params...)
+        if(doingmks3) then
+           call transformbl2mksh3(theta,zr,x2,h,aa,bb,pp)
+        else
+           call transformbl2mks2(zr,theta, x1, x2,r0, h)
+        endif
 
         !Distance from current points to grid points
         lx1=floor((x1-uniqx1(1))/(uniqx1(nx1)-uniqx1(1))*(nx1-1))+1
@@ -168,9 +196,9 @@
         ! periodic in phi
         minph=uniqph(lx3)
         ux3=merge(ux3,one,ux3.le.nx3)
-        !where(ux3.gt.nx3)
-        !    ux3=1
-        !endwhere
+        where(ux3.gt.nx3)
+            ux3=1
+        endwhere
         where(lx3.lt.1)
             lx3=nx3
             minph=uniqph(lx3)-2.*pi
@@ -192,18 +220,25 @@
         endwhere
 
         ! theta-distance
-        ! Deal with poles 
-        !AC for interpolation, choose rl for theta distance? 
-        call transformmksh32bl(uniqx2(lx2),uniqr(lx1),thl,h,aa,bb,pp)
-        call transformmksh32bl(uniqx2(ux2),uniqr(lx1),thu,h,aa,bb,pp)
-        call transformmksh32bl(uniqx2(one),uniqr(lx1),thone,h,aa,bb,pp)
-        
+        if(doingmks3) then
+            call transformmksh32bl(uniqx2(lx2),uniqr(lx1),thl,h,aa,bb,pp)
+            call transformmksh32bl(uniqx2(ux2),uniqr(lx1),thu,h,aa,bb,pp)
+            call transformmksh32bl(uniqx2(one),uniqr(lx1),thone,h,aa,bb,pp)
+        else
+            call transformmks22bl(uniqx1(lx1), uniqx2(lx2),rdummy,thl,r0, h)
+            call transformmks22bl(uniqx1(lx1), uniqx2(ux2),rdummy,thu,r0, h)
+            call transformmks22bl(uniqx1(lx1), uniqx2(one),rdummy,thone,r0, h)
+        endif
+
         where(ux2.ne.lx2)
            td=abs((theta-thl)/(thu-thl))
         elsewhere
            td=abs((theta-thl)/thone)
         endwhere
         
+        ! for nearest neighbor, use this instead of above
+        !rd(:)=1.; td(:)=1.; pd(:)=1.
+
         ! Indices for nearest neighbors in 3D
         ! th is fastest changing index
         x2l=lx2-1; 
@@ -266,7 +301,7 @@
         !mask data outside trusted region
         rho=merge(rho,dzero,x1.gt.uniqx1(1))*nfac
         te=merge(te,fone,x1.gt.uniqx1(1))*pfac 
-        Be=merge(Be,dzero,x1.gt.uniqx1(1)) !AC -- does using zero make sense?
+        Be=merge(Be,dzero,x1.gt.uniqx1(1)) 
         vrl0=merge(vrl0,dzero,x1.gt.uniqx1(1))
         vtl0=merge(vtl0,fone,x1.gt.uniqx1(1))
         b1tmp=merge(b1tmp,fone,x1.gt.uniqx1(1))
@@ -276,7 +311,6 @@
         u1tmp=merge(dble(u1tmp),done,x1.gt.uniqx1(1))
         vpl0=merge(vpl0,dzero,x1.gt.uniqx1(1))
 
-        !AC TODO !!!! minimum polar cell - change!
         !AC this is the minimum polar coordinate x2 we trust. 
         x2mintrust = uniqx2(minpolecell)
         x2maxtrust = uniqx2(size(uniqx2)-(minpolecell-1))
@@ -290,18 +324,18 @@
 
         !cut out background entirely -- all theta > pi/2 !AC -- assumes symmetric grid!!
         else if(type.eq.2) then 
-           thmaxtrust = 0.5*pi!0.25*pi.   !uniqx2(int(size(uniqx2)/2)-2)
+           thmaxtrust = 0.5*pi
 
         !cut out foreground entirely -- all theta > pi/2 !AC -- assumes symmetric grid!!       
         else if(type.eq.3) then
-           thmintrust = 0.5*pi!0.75*pi. !uniqx2(int(size(uniqx2)/2)+2)
+           thmintrust = 0.5*pi
         end if
 
         !theta based cuts for jet
         if((type.eq.1).or.(type.eq.2).or.(type.eq.3)) then
             rho=merge(rho,dzero,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
             te=merge(te,fone,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
-            Be=merge(Be,dzero,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))!AC -- does using zero make sense?
+            Be=merge(Be,dzero,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
             vrl0=merge(vrl0,dzero,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
             vtl0=merge(vtl0,fone,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
             b1tmp=merge(b1tmp,fone,(theta.gt.thmintrust).and.(theta.lt.thmaxtrust))
@@ -315,7 +349,7 @@
         !x2 based cuts for polar axis
         rho=merge(rho,dzero,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
         te=merge(te,fone,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust)) 
-        Be=merge(Be,dzero,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust)) !AC -- does using zero make sense?
+        Be=merge(Be,dzero,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust)) 
         vrl0=merge(vrl0,dzero,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
         vtl0=merge(vtl0,fone,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
         b%data(1)=merge(b1tmp,fone,(x2.gt.x2mintrust).and.(x2.lt.x2maxtrust))
@@ -327,15 +361,13 @@
 
         ! currrently shortfile reads ion temperature info in Be array 
         ! TODO fix!
-
-        if(shortfile) then 
+        if(shortfile.and.doingte) then 
           ti = Be
         else
           ti = te !AC TODO should load ion temperature even in longfile
         endif
 
-        !AC load nonthermal
-        !AC do we have to do this in a loop? 
+        ! load nonthermal
         if(doingkoralnth) then
            do ie=1, nrelbin
               nth_bini=reshape(nth_arr(indx,ie),(/npts,2**(ndim+1)/))
@@ -347,7 +379,8 @@
 
         ! Compute magnitude of interpolated b-field and force b^2 > 0 (need to look into numerical issues here):
         call assign_metric(b,transpose(kerr_metric(zr, real(x0%data(3)),a)))
-        bmag=b*b; bmag=merge(bmag,dzero,bmag.ge.0d0)
+        bmag=b*b; 
+        bmag=merge(bmag,dzero,bmag.ge.0d0)
         bmag=sqrt(bmag)
 
         ! Protect azimuthal velocities at poles
@@ -357,20 +390,19 @@
         u%data(4)=u%data(1)*dble(vph0)
         call assign_metric(u,transpose(kerr_metric(zr,real(x0%data(3)) ,a)))
 
-        end subroutine koral3d_vals
+    end subroutine koral3d_vals
 
-        ! Read inputs from file
-        !AC koral will share the harm input file structure for now 
-        subroutine read_koral3d_inputs(ifile)
+    ! Read inputs from file
+    subroutine read_koral3d_inputs(ifile)
         character(len=500), intent(in) :: ifile
         open(unit=8,file=ifile,form='formatted',status='old')
         read(8,nml=harm) 
         write(6,*) 'read: ',nt
         close(unit=8)
-        end subroutine read_koral3d_inputs
+    end subroutine read_koral3d_inputs
 
-        ! Read header values
-        subroutine read_koral3d_data_header(nhead)
+    ! Read header values
+    subroutine read_koral3d_data_header(nhead)
         integer, intent(in) :: nhead
         real(8), dimension(nhead) :: header
         real(8), dimension(3) :: header2
@@ -392,6 +424,12 @@
         bb=header(10)
         pp=header(11)
 
+        if(aa.eq.-1.and.bb.eq.-1.and.pp.eq.-1) then
+          doingmks3=.FALSE.
+        else
+          doingmks3=.TRUE.
+        endif
+
         !AC nonthermal
         if(doingkoralnth) then
            read(8,*) header2
@@ -399,20 +437,21 @@
            relgammamin=header2(2)
            relgammamax=header2(3)
            write(6,*) 'read nth header vals ', nrelbin, relgammamin, relgammamax
-
         end if
         
         write(6,*) 'read header vals: ', asim, r0, h, aa, bb, pp
+        write(6,*) 'mks3: ',doingmks3
         close(unit=8)
-        end subroutine read_koral3d_data_header
+    end subroutine read_koral3d_data_header
 
-        !Read text files with  data values
-        !AC TODO can we read binary data files instead???
-        subroutine read_koral3d_data_file(data_file,tcur,rho,p,u,b,Be,nnth)
+    !Read text files with  data values
+    !AC TODO can we read binary data files instead???
+    subroutine read_koral3d_data_file(data_file,tcur,rho,p,u,b,Be,nnth)
         character(len=500), intent(in) :: data_file
         integer :: nhead, nhead2, dlen
         integer :: rhopos,ppos,Bepos,vpos,bpos,gdetpos,gridpos,nthpos
         real(8), intent(out) :: tcur
+        real(8) :: minrho
         real(8), dimension(:), allocatable, intent(out) :: p,rho,Be
         real(8), dimension(:,:), allocatable, intent(out) :: nnth
         real(8), dimension(:), allocatable :: gdet, header, header2
@@ -420,28 +459,36 @@
         real(8), dimension(:,:), allocatable :: grid, data
         integer :: i, nelem
 
-
-
-          !AC TODO still need to change these positions for 3d sim files!!
+          !AC TODO nonthermal for 3d sim files?
           if(nrelbin>0) then
              dlen=41+nrelbin;
           else
              dlen = 38
           endif
 
-          shortfile = .FALSE.
-          if(shortfile) dlen = 23
+          !AC TODO: manual flags for short vs long file, and doingte or not
+          shortfile = .TRUE.
+          doingte = .FALSE.
+
+          if(shortfile.and.doingte) then 
+             dlen = 23
+          elseif(shortfile) then 
+             dlen = 20
+          endif
 
           nhead=11; nhead2=3
           allocate(header(nhead))
           allocate(header2(nhead2))
 
-          ! M87 library vs. Andrew format difference
+          ! JD: M87 library vs. Andrew format difference
           ! FOR SHORTFILE BE IS THE ION TEMPERATURE TO RECONSTRUCT P FOR POST-PROCESSING
-          if(shortfile) then
-             rhopos=10; vpos=12; bpos=16; ppos=21; gridpos=4; Bepos=22
+          if(shortfile.and.doingte) then
+             rhopos=10; vpos=12; bpos=16; ppos=21; gridpos=4; Bepos=22 ! here p is electront temp, Be is ion temp
+          elseif(shortfile) then
+             write(6,*) 'shortfile', dlen
+             rhopos=10; vpos=12; bpos=16; ppos=11; gridpos=4; Bepos=11 ! here p is gas temp, Be is also gas temp dummy
           else
-             rhopos=10; Bepos=32; ppos=33; vpos=12; bpos=25; gdetpos=16; gridpos=4; nthpos=43 !AC: is nthpos correct?? change for 3D?
+             rhopos=10; Bepos=32; ppos=33; vpos=12; bpos=25; gdetpos=16; gridpos=4; nthpos=43 !AC: TODO nthpos for 3D?
           endif
 
           write(6,*) 'dfile: ',dfile
@@ -449,9 +496,9 @@
           open(unit=8,file=data_file,form='formatted',status='old',action='read')
           
           allocate(data(dlen,nx2)); nelem=nx2 !x2 is the fastest changing index
-          allocate(grid(nx1*nx2*nx3,6));      !AC (x1,x2,x3,r,theta,phi)
+          allocate(grid(nx1*nx2*nx3,6));      !(x1,x2,x3,r,theta,phi)
           allocate(p(nx1*nx2*nx3)); allocate(rho(nx1*nx2*nx3)); allocate(Be(nx1*nx2*nx3))
-          allocate(u(nx1*nx2*nx3)); allocate(b(nx1*nx2*nx3)); allocate(gdet(nx1*nx2*nx3))
+          allocate(u(nx1*nx2*nx3)); allocate(b(nx1*nx2*nx3)); 
           allocate(nnth(nx1*nx2*nx3, nrelbin));
 
           write(6,*) 'read koral sizes', dlen, nx1, nx2, nx3, size(data)
@@ -467,16 +514,15 @@
           
           write(6,*) 'read koral past header: ', nx1, nx2, nx3, nelem, dlen
 
-          !AC read the data
+          ! read the data
           do i=0, (nx1*nx2*nx3)/nelem-1
              read(8,*) data
-             rho(1+i*nelem:(i+1)*nelem)=data(rhopos,:)
-!             if(.not.shortfile) Be(1+i*nelem:(i+1)*nelem)=data(Bepos,:)  
-             Be(1+i*nelem:(i+1)*nelem)=data(Bepos,:)
-             p(1+i*nelem:(i+1)*nelem)=data(ppos,:) !AC p is actually Te  
+             rho(1+i*nelem:(i+1)*nelem)=data(rhopos,:) 
+             Be(1+i*nelem:(i+1)*nelem)=data(Bepos,:) ! if shortfile, Be is actually Ti
+             p(1+i*nelem:(i+1)*nelem)=data(ppos,:)   !AC p is actually Te  
 
-             b(1+i*nelem:(i+1)*nelem)%data(1)=(data(bpos,:))
-             b(1+i*nelem:(i+1)*nelem)%data(2)=(data(bpos+1,:))
+             b(1+i*nelem:(i+1)*nelem)%data(1)=(data(bpos,:)) 
+             b(1+i*nelem:(i+1)*nelem)%data(2)=(data(bpos+1,:)) 
              b(1+i*nelem:(i+1)*nelem)%data(3)=(data(bpos+2,:))
              b(1+i*nelem:(i+1)*nelem)%data(4)=(data(bpos+3,:))
 
@@ -485,9 +531,8 @@
              u(1+i*nelem:(i+1)*nelem)%data(3)=(data(vpos+2,:))
              u(1+i*nelem:(i+1)*nelem)%data(4)=(data(vpos+3,:))
 
-             !AC grid is x1,x2,r,theta
+             ! grid is x1,x2,r,theta
              grid(1+i*nelem:(i+1)*nelem,:)=transpose(data(gridpos:gridpos+5,:)) 
-             gdet(1+i*nelem:(i+1)*nelem)=(data(gdetpos,:))
 
              if(doingkoralnth) then
                 nnth(1+i*nelem:(i+1)*nelem, : ) = transpose(data(nthpos:nthpos+nrelbin-1, : ))
@@ -510,24 +555,78 @@
           if(doingkoralnth) then
              write(6,*) 'read koral nnth 1 ', minval(nnth(:,1)), maxval(nnth(:,1))
           endif
-          write(6,*) 'read koral grid sizes', size(x1_arr), size(x2_arr), size(x3_arr), size(r_arr), size(th_arr), size(ph_arr)
-          write(6,*) 'read koral Te ', minval(p), maxval(p)
-          write(6,*) 'read koral Be ', minval(Be), maxval(Be)
-          write(6,*) 'read koral gdet ', minval(gdet), maxval(gdet)
-          write(6,*) 'read koral rho ', minval(rho), maxval(rho)
-          write(6,*) 'read koral b0', minval(b%data(1)), maxval(b%data(1))
-          write(6,*) 'read koral u0 ', minval(u%data(1)), maxval(u%data(1))
 
-          write(6,*) 'read koral transform coords r ', minval(r_arr), maxval(r_arr), asim
-          write(6,*) 'read koral transform coords theta  ', minval(th_arr), maxval(th_arr), asim
-          write(6,*) 'read koral transform coords phi',minval(x3_arr), maxval(x3_arr)
+          ! AC TODO -- can we tell if text output is in ks or bl? 
+!          u = uks2ubl(u,dble(r_arr),dble(asim))
+!          b = uks2ubl(b,dble(r_arr),dble(asim))
+
+          call assign_metric(b,transpose(kerr_metric(r_arr, th_arr,asim)))
+          call assign_metric(u,transpose(kerr_metric(r_arr, th_arr,asim)))
 
           write(6,*) 'WARNING: ignoring minpolecell=',minpolecell, ' cells on polar axis!!'
     
-          deallocate(gdet)
-        end subroutine read_koral3d_data_file
+        write(6,*) 'read koral grid sizes', size(r_arr), size(th_arr), size(ph_arr)
+!        write(6,*) 'read koral Be ', minval(Be), maxval(Be)
+        write(6,*) 'read koral rho ', minval(rho)/1.461058d-2, maxval(rho)/  1.461058d-2
+        write(6,*) 'read koral Te ', minval(p), maxval(p)
 
-        subroutine initialize_koral3d_model(a,ifile,doingnth,df,hf,ntt,indft,sfac,nrelbin_bk,relgammamin_bk,relgammamax_bk)
+!        write(6,*) 'read koral b0', minval(b%data(1))/ sqrt(1.313134d19), maxval(b%data(1))/ sqrt(1.313134d19)
+!        write(6,*) 'read koral b1', minval(b%data(2))/ sqrt(1.313134d19), maxval(b%data(2))/ sqrt(1.313134d19)
+!        write(6,*) 'read koral b2', minval(b%data(3))/ sqrt(1.313134d19), maxval(b%data(3))/ sqrt(1.313134d19)
+!        write(6,*) 'read koral b3', minval(b%data(4))/ sqrt(1.313134d19), maxval(b%data(4))/ sqrt(1.313134d19)
+
+!        write(6,*) 'read koral u0 ', minval(u%data(1)), maxval(u%data(1))
+!        write(6,*) 'read koral u1 ', minval(u%data(2)), maxval(u%data(2))
+!        write(6,*) 'read koral u2 ', minval(u%data(3)), maxval(u%data(3))
+!        write(6,*) 'read koral u3 ', minval(u%data(4)), maxval(u%data(4))
+
+        write(6,*) 'read koral bsq ', minval(b*b)/ (1.313134d19), maxval(b*b)/ (1.313134d19)
+        write(6,*) 'read koral usq ', minval(u*u), maxval(u*u)
+
+
+        if(any(rho.eq.0.)) then
+           write(6,*) 'rho=0 regions found!'
+           minrho = 1.d-6 * minval(merge(rho,1d100,rho.gt.0.)) !AC TODO -- why??
+              write(6,*) '  masking with ', minrho
+           rho = merge(rho,minrho,rho.gt.0.)
+        end if
+
+        if(any(isnan(rho))) then
+           write(6,*) 'nan in rho!'
+        end if
+        if(any(isnan(p))) then
+           write(6,*) 'nan in Te!' 
+           write(6,*) '  masking with 0' 
+           p = merge(p,0d0,.not.isnan(p))
+        end if
+        if(any(isnan(b%data(1)))) then
+           write(6,*) 'nan in b0!'
+        end if
+        if(any(isnan(b%data(2)))) then
+           write(6,*) 'nan in b1!'
+        end if
+        if(any(isnan(b%data(2)))) then
+           write(6,*) 'nan in b2!'
+        end if
+        if(any(isnan(b%data(3)))) then
+           write(6,*) 'nan in b3!'
+        end if
+
+        if(any(isnan(u%data(1)))) then
+           write(6,*) 'nan in u0!'
+        end if
+        if(any(isnan(u%data(2)))) then
+           write(6,*) 'nan in u1!'
+        end if
+        if(any(isnan(u%data(2)))) then
+           write(6,*) 'nan in u2!'
+        end if
+        if(any(isnan(u%data(3)))) then
+           write(6,*) 'nan in u3!'
+        end if
+    end subroutine read_koral3d_data_file
+
+    subroutine initialize_koral3d_model(a,ifile,doingnth,df,hf,ntt,indft,sfac,nrelbin_bk,relgammamin_bk,relgammamax_bk)
         real(kind=8), intent(in) :: a
         integer,intent(out),optional :: nrelbin_bk
         real,intent(out),optional :: relgammamin_bk, relgammamax_bk
@@ -576,10 +675,10 @@
         call init_koral3d_data(n,n*nt)
         call load_koral3d_data(nt)
         write(6,*) 'nrelbin',nrelbin
-        end subroutine initialize_koral3d_model
+    end subroutine initialize_koral3d_model
 
-        !Read data from file and then transfer to global arrays
-        subroutine load_koral3d_data(nt)
+    !Read data from file and then transfer to global arrays
+    subroutine load_koral3d_data(nt)
         real(8), dimension(:), allocatable :: rho,p,Be
         real(8), dimension(:,:), allocatable :: nnth  
         real, dimension(:), allocatable :: vrl, vtl, vpl
@@ -605,13 +704,11 @@
            call lnrf_frame(real(u%data(2)/u%data(1)),real(u%data(3)/u%data(1)), & 
                            real(u%data(4)/u%data(1)), &
                            r_arr,asim,th_arr,vrl,vtl,vpl)
-           write(6,*) 'lnrf transform', size(b0_arr), size(b%data(1)), size(b0_arr((k-1)*n+1:k*n))
-           write(6,*) 'lnrf transform', size(vrl), size(vtl), size(vpl), size(u0_arr), size(nth_arr(:,1))
 
+           write(6,*) 'koral scalefac: ', scalefac
            ! now assign to data arrays
-           write(6,*) scalefac, sqrt(scalefac)
            rho_arr((k-1)*n+1:k*n)=rho*scalefac
-           p_arr((k-1)*n+1:k*n)=p !AC p_arr is actually the ELECTRON TEMPERATURE straight from koral -- no scale fac!
+           p_arr((k-1)*n+1:k*n)=p    !AC p_arr is actually the ELECTRON TEMPERATURE straight from koral -- no scale fac!
            Be_arr((k-1)*n+1:k*n)=Be
            b0_arr((k-1)*n+1:k*n)=b%data(1)*sqrt(scalefac)
            br_arr((k-1)*n+1:k*n)=b%data(2)*sqrt(scalefac)
@@ -643,10 +740,10 @@
         deallocate(vrl); deallocate(vtl); deallocate(vpl)
         deallocate(u); deallocate(b)
         deallocate(nnth)
-        end subroutine  load_koral3d_data
+    end subroutine  load_koral3d_data
 
-        ! Advance to next timestep file
-        subroutine advance_koral3d_timestep(dtobs)
+    ! Advance to next timestep file
+    subroutine advance_koral3d_timestep(dtobs)
         real(8), intent(in) :: dtobs
         integer :: nupdate
         nupdate = floor(dtobs / tstep)
@@ -656,9 +753,9 @@
         indf=indf+nupdate
         write(6,*) 'advance koral timestep: ',dtobs,tstep,toffset,indf,nupdate !AC
         call update_koral3d_data(nupdate)
-        end subroutine advance_koral3d_timestep
+    end subroutine advance_koral3d_timestep
 
-        subroutine update_koral3d_data(nupdate)
+    subroutine update_koral3d_data(nupdate)
         integer, intent(in) :: nupdate
         integer :: nshift
         if(nupdate.gt.nt) then ! this is case where we just load all new data
@@ -680,10 +777,10 @@
            endif
            call load_koral3d_data(nupdate)
         end if
-        end subroutine update_koral3d_data
+    end subroutine update_koral3d_data
 
-        ! allocate arrays
-        subroutine init_koral3d_data(nx,n)
+    ! allocate arrays
+    subroutine init_koral3d_data(nx,n)
           integer, intent(in) :: n,nx
           integer :: i
           real :: logbinspace, binspace
@@ -699,10 +796,10 @@
            allocate(nth_arr(n,nrelbin))
         end if
         
-        end subroutine init_koral3d_data
+    end subroutine init_koral3d_data
 
-        ! deallocate arrays
-        subroutine del_koral3d_data()
+    ! deallocate arrays
+    subroutine del_koral3d_data()
         deallocate(rho_arr); deallocate(p_arr); deallocate(Be_arr); deallocate(u0_arr)
         deallocate(vrl_arr); deallocate(vtl_arr); deallocate(vpl_arr)
         deallocate(b0_arr); deallocate(br_arr); deallocate(bth_arr)
@@ -712,6 +809,6 @@
         if(doingkoralnth) then
            deallocate(nth_arr)
         end if
-        end subroutine del_koral3d_data
+    end subroutine del_koral3d_data
 
-      end module fluid_model_koral3d
+end module fluid_model_koral3d

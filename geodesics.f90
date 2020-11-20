@@ -84,7 +84,7 @@
 ! provisional idea to scale these with nup to improve accuracy for large nup
                  geargs%kext=ceiling(3d0*geargs%nup/400d0)
                  geargs%next=ceiling(60d0*geargs%nup/400d0)
-                 write(6,*) 'kext next: ',geargs%kext,geargs%next
+!                 write(6,*) 'kext next: ',geargs%kext,geargs%next
               else
                  geargs%mufill=0
                  geargs%kext=0

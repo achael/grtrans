@@ -1,31 +1,30 @@
+module ray_trace
 
-      module ray_trace
+  use fits
 
-      use fits
+  implicit none
 
-      implicit none
-
-      type ray_set
-      integer :: nx,ny,nvals,nextra
-      real, dimension(:,:), allocatable :: pixloc
-      real, dimension(:,:), allocatable :: pixvals
+  type ray_set
+  integer :: nx,ny,nvals,nextra
+  real, dimension(:,:), allocatable :: pixloc
+  real, dimension(:,:), allocatable :: pixvals
 !      integer :: current_pixel
 !      integer :: next_pixel
-      end type
+  end type
 
-      interface write_raytrace_camera
-        module procedure write_raytrace_camera
+  interface write_raytrace_camera
+    module procedure write_raytrace_camera
 !        module procedure write_raytrace_camera_fits
-      end interface
+  end interface
 
-      interface kwrite_raytrace_camera
-        module procedure kwrite_raytrace_camera
+  interface kwrite_raytrace_camera
+    module procedure kwrite_raytrace_camera
 !        module procedure write_raytrace_camera_fits
-      end interface
- 
-      contains
+  end interface
 
-        subroutine save_raytrace_camera_pixel(c,pixel,vals,pnum)
+  contains
+
+    subroutine save_raytrace_camera_pixel(c,pixel,vals,pnum)
         type (ray_set), intent(inout) :: c
         real, intent(in), dimension(2) :: pixel
         real, intent(in), dimension(c%nvals+c%nextra) :: vals
@@ -36,7 +35,7 @@
         c%pixloc(:,pnum)=pixel
 !        write(6,*) 'save camera end of save'
         return
-        end subroutine save_raytrace_camera_pixel
+    end subroutine save_raytrace_camera_pixel
 
 !        subroutine raytrace_camera_pixel_getnext(c)
 !        type (ray_set), intent(inout) :: c
@@ -49,7 +48,7 @@
 !        return
 !        end subroutine raytrace_camera_pixel_getnext
 
-        subroutine initialize_raytrace_camera(c,nx,ny,nvals,nextra)
+    subroutine initialize_raytrace_camera(c,nx,ny,nvals,nextra)
         type (ray_set), intent(out) :: c
         integer, intent(in) :: nx,ny,nvals,nextra
         c%nx=nx
@@ -61,16 +60,16 @@
         allocate(c%pixvals(c%nvals+c%nextra,c%nx*c%ny))
         c%pixvals(:,:)=0.
         return
-        end subroutine initialize_raytrace_camera
+    end subroutine initialize_raytrace_camera
 
-        subroutine del_raytrace_camera(c)
+    subroutine del_raytrace_camera(c)
         type (ray_set), intent(inout) :: c
         deallocate(c%pixloc)
         deallocate(c%pixvals)
         return
-        end subroutine del_raytrace_camera
+    end subroutine del_raytrace_camera
 
-        subroutine write_raytrace_camera(c,outunit,outfile,cflag, &
+    subroutine write_raytrace_camera(c,outunit,outfile,cflag, &
          cnum,ncams,nkey,knames,kdescs,kvals)
         type (ray_set), intent(in) :: c
         integer, intent(in) :: outunit, cflag, cnum, ncams
@@ -82,9 +81,8 @@
         integer, dimension(2) :: naxes
         integer :: unit, status, k, nkeyz
         if(cflag==1) then
-! use FITS
-          write(6,*) cnum, ncams, outunit, size(c%pixloc), &
-       size(c%pixvals)
+          ! use FITS
+          !write(6,*) cnum, ncams, outunit, size(c%pixloc), size(c%pixvals)
           !write(6,*) 'FITS ', outfile
           if(cnum==1) then
             call create_fits(unit,outfile,status)
@@ -145,15 +143,9 @@
           close(outunit)
         endif
         return
-        end subroutine write_raytrace_camera
+    end subroutine write_raytrace_camera
 
-
-
-
-
-
-
-        subroutine kwrite_raytrace_camera(c,outunit,outfile,cflag, &
+    subroutine kwrite_raytrace_camera(c,outunit,outfile,cflag, &
          cnum,ncams,nkey,knames,kdescs,kvals, &
          standard,mumin,mumax,nmu,phi0,spin,&
          uout,uin, rcut, nrotype, gridvals, nn, &
@@ -162,9 +154,8 @@
          p1, p2, fpositron,jetalpha, stype, &
          use_geokerr, nvals, iname, extra)
 
-
         type (ray_set), intent(in) :: c
-!MORE INPUTS
+        !MORE INPUTS
         integer, intent(in) :: standard,nrotype,nvals,nfreq,nmu,cflag, nt,nmdot,nload,extra
         logical, intent(in) :: use_geokerr
         real(kind=8), intent(in) :: mumax,mumin,spin,rcut,mbh,uout,uin, & 
@@ -173,7 +164,7 @@
         real(kind=8), dimension(4),intent(in) :: gridvals
         integer, dimension(3), intent(in) :: nn
         character(len=500) :: tch,tcha
-!End INPUTS
+        !End INPUTS
         integer, intent(in) :: outunit, cnum, ncams
         integer, intent(in), optional :: nkey
         character(len=500), dimension(:), intent(in), optional :: &
@@ -183,9 +174,8 @@
         integer, dimension(2) :: naxes
         integer :: unit, status, k, nkeyz
         if(cflag==1) then
-! use FITS
-          write(6,*) cnum, ncams, outunit, size(c%pixloc), &
-       size(c%pixvals)
+          ! use FITS
+          !write(6,*) cnum, ncams, outunit, size(c%pixloc), size(c%pixvals)
           !write(6,*) 'FITS ', outfile
           if(cnum==1) then
             call create_fits(unit,outfile,status)
@@ -305,12 +295,7 @@
           call aftpkyj(unit,tch,cflag,tch,status)
           tch = 'extra'
           call aftpkyj(unit,tch,extra,tch,status)
-!GEOKERR IS LOGICAL
-
-
-
-
-
+          !GEOKERR IS LOGICAL
 
 !          write(6,*) 'made it'
           write(6,*) 'write_raytrace_camera: ',size(c%pixvals)
@@ -343,6 +328,6 @@
           close(outunit)
         endif
         return
-        end subroutine kwrite_raytrace_camera
+    end subroutine kwrite_raytrace_camera
 
-      end module ray_trace
+end module ray_trace

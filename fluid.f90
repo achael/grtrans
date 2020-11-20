@@ -1141,6 +1141,7 @@ module fluid_model
         real(kind=8), intent(in) :: sigcut
         real(kind=8), dimension(size(bcgs)) :: sigmacgs
         sigmacgs = (bcgs*bcgs) / (rhocgs*8.988e20*4*pi)
+        !write(6,*) 'sigcut step: ', sigcut,maxval(sigmacgs)
         if(any(sigmacgs.ge.sigcut)) then
 
           ! JD changing values to see if we can avoid Koral NaNs
@@ -1422,19 +1423,21 @@ module fluid_model
           else
             tecgs =pcgs/(2*ncgs)/k ! single electron-ion fluid, assumed equal temperature her
           endif
-
+          tempcgs = tecgs
           bhl=f%bmag*sqrt(dcgs)*c
           bcgs=bhl*sqrt(4d0*pi) !HL to Gaussian
 
           nnthcgs=f%nnth ! binned non-thermal e- (TODO doesn't exist in h5 yet, so no units)
           ncgsnth=0. !AC TODO: add other koral nonthermal prescriptions
 
+!          write(6,*) 'koral scale n', maxval(ncgs), ' te',maxval(tempcgs), ' b', maxval(bcgs)
         else ! already in cgs
 
           rhocgs=f%rho
           ncgs=rhocgs/mp !TODO AC: handle non-hydrogen plasma
           tecgs=f%te ! AC: finally changed p-->te array
           ticgs = f%ti
+          tempcgs = tecgs
 
           !convert HL B-field to gaussian
           bhl = f%bmag
@@ -1442,6 +1445,7 @@ module fluid_model
 
           nnthcgs=f%nnth ! binned non-thermal e-, already in cgs if present
           ncgsnth=0. !AC TODO: add other koral nonthermal prescriptions
+       !   write(6,*) 'koral noscale n', maxval(ncgs), ' te',maxval(tempcgs), ' b', maxval(bcgs)
         endif
 
         ! JD: allow scaling w/ Mdot
@@ -1453,6 +1457,7 @@ module fluid_model
         ! AC: by default the p variable stores electron temperature for KORAL
         ! JD: changed to allow postprocessing Monika model if gmin>1 (rhigh=gmin,rlow=1)
         if(sp%gminval.ge.1d0) then
+
            beta_trans = 1d0
 
            ! f%Be is confusingly the proton temperature here (AC: changed to electron temperature!)
@@ -1461,11 +1466,14 @@ module fluid_model
            call charles_e(rhocgs,tecgs+ticgs,2.*tecgs+ticgs,bhl,beta_trans,1d0,sp%gminval,tempcgs)
         else 
 !           tempcgs=f%p 
-           tempcgs=f%te ! AC: finally changed p-->te array
+           tempcgs=tecgs ! AC: finally changed p-->te array
         endif
 
         ! apply sigma cut
         call andrew_sigcut(bcgs,rhocgs,tempcgs,ncgs,sigcut)
+
+!        rhocgs=tempcgs ! for testing with emis=RHO
+!        ncgs=tempcgs
 
         !ANDREW -- zero out density to zero out emissivity in disk or jet
         if(cuttype.eq.1) then  !zero out jet
