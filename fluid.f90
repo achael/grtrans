@@ -31,7 +31,7 @@ module fluid_model
   use fluid_model_koral3d, only: initialize_koral3d_model, del_koral3d_data, koral3d_vals, &
        advance_koral3d_timestep
   use fluid_model_koralh5, only: initialize_koralh5_model, del_koralh5_data, koralh5_vals, &
-       advance_koralh5_timestep
+       advance_koralh5_timestep,vladimir_e
   use fluid_model_thickdisk, only: initialize_thickdisk_model, del_thickdisk_data, thickdisk_vals, &
        advance_thickdisk_timestep
   use fluid_model_mb09, only: initialize_mb09_model, del_mb09_data, mb09_vals, &
@@ -1421,7 +1421,8 @@ module fluid_model
             tecgs = f%te
             ticgs = f%ti
           else
-            tecgs =pcgs/(2*ncgs)/k ! single electron-ion fluid, assumed equal temperature her
+            tecgs =pcgs/(2*ncgs)/k ! single electron-ion fluid, assumed equal temperature here
+            ticgs =tecgs ! single electron-ion fluid, assumed equal temperature here
           endif
           tempcgs = tecgs
           bhl=f%bmag*sqrt(dcgs)*c
@@ -1431,12 +1432,12 @@ module fluid_model
           ncgsnth=0. !AC TODO: add other koral nonthermal prescriptions
 
 !          write(6,*) 'koral scale n', maxval(ncgs), ' te',maxval(tempcgs), ' b', maxval(bcgs)
-        else ! already in cgs
+        else ! two-temperature, already in cgs
 
           rhocgs=f%rho
           ncgs=rhocgs/mp !TODO AC: handle non-hydrogen plasma
           tecgs=f%te ! AC: finally changed p-->te array
-          ticgs = f%ti
+          ticgs=f%ti
           tempcgs = tecgs
 
           !convert HL B-field to gaussian
@@ -1450,13 +1451,21 @@ module fluid_model
 
         ! JD: allow scaling w/ Mdot
 !       write(6,*) 'convert koral nfac: ', sp%nfac,sp%sigcut,sp%gminval
-        bcgs=bcgs*sqrt(sp%nfac)
-        ncgs=ncgs*sp%nfac; 
-        rhocgs=rhocgs*sp%nfac;
+!        bcgs=bcgs*sqrt(sp%nfac)
+!        ncgs=ncgs*sp%nfac; 
+!        rhocgs=rhocgs*sp%nfac;
+
+       ! mdot here is dimensionless
+       ! be careful! this compounds with overall scalefac!
+        bcgs=bcgs*sqrt(sp%mdot)
+        ncgs=ncgs*sp%mdot; 
+        rhocgs=rhocgs*sp%mdot;
 
         ! AC: by default the p variable stores electron temperature for KORAL
         ! JD: changed to allow postprocessing Monika model if gmin>1 (rhigh=gmin,rlow=1)
-        if(sp%gminval.ge.1d0) then
+        if(sp%gminval.eq.-2d0) then
+           call vladimir_e(tecgs+ticgs,tempcgs) 
+        else if(sp%gminval.ge.1d0) then
 
            beta_trans = 1d0
 
@@ -1472,7 +1481,8 @@ module fluid_model
         ! apply sigma cut
         call andrew_sigcut(bcgs,rhocgs,tempcgs,ncgs,sigcut)
 
-!        rhocgs=tempcgs ! for testing with emis=RHO
+! for testing with emis=RHO 
+!        rhocgs=tempcgs 
 !        ncgs=tempcgs
 
         !ANDREW -- zero out density to zero out emissivity in disk or jet
