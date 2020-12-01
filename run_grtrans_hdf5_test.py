@@ -39,7 +39,7 @@ hfile = './ana0990.h5' #jet, a=0.25
 dfile = './ana0990.h5'
 SPIN = 0.25
 RESCALE = 2.46e-16
-NPIX_IM = 512
+NPIX_IM = 128
 
 #hfile = './ana1000.h5' #mks2, a=0.9375
 #dfile = './ana1000.h5'
@@ -101,7 +101,7 @@ def main():
                            nfreq=1,fmin=freq,fmax=freq,
                            ename='SYNCHTHAV',
                            nvals=npol,
-                           gmin=-2, # confusingly, this is rhigh. #-2-->vladimir model
+                           gmin=-3, # confusingly, this is rhigh. #-2-->vladimir model, -3--> michael model
                            spin=SPIN,standard=1,
                            uout=uout,
                            mbh=MBH, 

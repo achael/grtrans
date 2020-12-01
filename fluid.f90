@@ -31,7 +31,7 @@ module fluid_model
   use fluid_model_koral3d, only: initialize_koral3d_model, del_koral3d_data, koral3d_vals, &
        advance_koral3d_timestep
   use fluid_model_koralh5, only: initialize_koralh5_model, del_koralh5_data, koralh5_vals, &
-       advance_koralh5_timestep,vladimir_e
+       advance_koralh5_timestep,vladimir_e,michael_e
   use fluid_model_thickdisk, only: initialize_thickdisk_model, del_thickdisk_data, thickdisk_vals, &
        advance_thickdisk_timestep
   use fluid_model_mb09, only: initialize_mb09_model, del_mb09_data, mb09_vals, &
@@ -1463,7 +1463,9 @@ module fluid_model
 
         ! AC: by default the p variable stores electron temperature for KORAL
         ! JD: changed to allow postprocessing Monika model if gmin>1 (rhigh=gmin,rlow=1)
-        if(sp%gminval.eq.-2d0) then
+        if(sp%gminval.eq.-3d0) then
+           call michael_e(rhocgs,tecgs+ticgs,bhl,tempcgs) 
+        else if(sp%gminval.eq.-2d0) then
            call vladimir_e(tecgs+ticgs,tempcgs) 
         else if(sp%gminval.ge.1d0) then
 
